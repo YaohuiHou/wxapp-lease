@@ -1,6 +1,8 @@
 # wxapp-lease
+
 租聘(找活)微信端小程序
 
+![image](./erweima.jpg)
 
 # 首页
 
@@ -10,13 +12,14 @@
 接口地址：getCityList
 请求方式：get/post
 ```
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    longitude	| int | 否 |	经度
-    latitude	| int | 否 |	纬度
 
+| 参数名    | 参数类型 | 是否必填 | 参数描述 |
+| --------- | -------- | -------- | -------- |
+| longitude | int      | 否       | 经度     |
+| latitude  | int      | 否       | 纬度     |
 
 返回格式：json
+
 ```
 {
     "ret": 0//成功 失败1
@@ -27,7 +30,7 @@
             name: '安徽',    // 区域名
             enName: 'anhui',  // 英文名
             parentId: -1, //（-1表示自己就为省，不为1表示自己对应的省的id）
-            children: [ 
+            children: [
                 {
                     id: 193,
                     level: 3,
@@ -47,8 +50,6 @@
         ...
     ]
 }
-
-
 ```
 
 ### 2、获取工程类型接口
@@ -56,8 +57,8 @@
 ```
 接口地址：getProjectTypeList
 请求方式：get/post
-
 ```
+
 参数无
 
 ```
@@ -77,17 +78,15 @@
         ...
     ]
 }
-
 ```
 
 ### 3、获取设备类型接口
 
-
 ```
 接口地址：getDeviceTypeList
 请求方式：get/post
-
 ```
+
 参数无
 
 ```
@@ -113,14 +112,11 @@
         ...
     ]
 }
-
 ```
-
 
 ### 4、工程状态接口
 
 ```
-
 [
     {
         id:'0', // 状态id
@@ -135,7 +131,6 @@
         name: '未选择', // 状态名称
     }
 ]
-
 ```
 
 ### 5、获取工程发布列表
@@ -144,20 +139,20 @@
 接口地址：getEngineeringList
 请求方式：get/post
 ```
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    cityId	| int | 否 |	城市id
-    startTime	| string | 否 |	开始时间
-    endTime	| string | 否 |	结束时间
-    projectType	| int | 否 |	工程类型
-    deviceType	| int | 否 |	设备类型
-    projectStatus	| int | 否 |	工程状态
-    page	| int | 否 | 页数（默认 1）
 
+| 参数名        | 参数类型 | 是否必填 | 参数描述       |
+| ------------- | -------- | -------- | -------------- |
+| cityId        | int      | 否       | 城市 id        |
+| startTime     | string   | 否       | 开始时间       |
+| endTime       | string   | 否       | 结束时间       |
+| projectType   | int      | 否       | 工程类型       |
+| deviceType    | int      | 否       | 设备类型       |
+| projectStatus | int      | 否       | 工程状态       |
+| page          | int      | 否       | 页数（默认 1） |
 
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
@@ -174,7 +169,7 @@
                         status: 0 // 设备状态  0 已抢单  1 抢单中 2 未抢单  3 已结束
                         amount: 3台  // 设备数量
                         target:{
-                          '吨位': 20吨  // 吨位  
+                          '吨位': 20吨  // 吨位
                         },
                         deviceType: '泵车',  // 设备类型
                         workload: '20天' // 工作量
@@ -187,29 +182,25 @@
         ]
     }
 }
-
-
 ```
-
 
 # 工程详情页
 
 ### 1、获取工程详情接口
 
-
 ```
 接口地址：getEngineeringDetail
 请求方式：get/post
 ```
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    projectId	| int | 是 |	工程id
-    openId	| int | 否 |	openid
 
+| 参数名    | 参数类型 | 是否必填 | 参数描述 |
+| --------- | -------- | -------- | -------- |
+| projectId | int      | 是       | 工程 id  |
+| openId    | int      | 否       | openid   |
 
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
@@ -244,29 +235,26 @@
         ]
     }
 }
-
-
 ```
 
 ## 抢活
 
 ### 2、获取所抢项目单的详情
 
-
 ```
 接口地址：getEngineeringList
 请求方式：get/post
 ```
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    projectId	| int | 是 |	工程id
-    orderId	| int | 是 |	订单id
-    openId	| int | 否 |	openid
 
+| 参数名    | 参数类型 | 是否必填 | 参数描述 |
+| --------- | -------- | -------- | -------- |
+| projectId | int      | 是       | 工程 id  |
+| orderId   | int      | 是       | 订单 id  |
+| openId    | int      | 否       | openid   |
 
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
@@ -284,7 +272,7 @@
                 fuel: true  // 燃油供应
             },
             // 项目单设备要求
-            devices: [ 
+            devices: [
                 {
                     status: 0 // 设备状态  0 已抢单  1 抢单中 2 未抢单  3 已结束
                     amount: 3台  // 设备数量
@@ -299,29 +287,25 @@
         ...
     ]
 }
-
-
 ```
 
-
 ### 3、获取所有设备
-
 
 ```
 接口地址：getUserDeviceList
 请求方式：get/post
 ```
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    openid	| int | 是 |	用户id
-    projectId	| int | 否 |	工程id
-    orderId	| int | 否 |	订单id
-    page	| int | 否 | 页数（默认 1）
 
+| 参数名    | 参数类型 | 是否必填 | 参数描述       |
+| --------- | -------- | -------- | -------------- |
+| openid    | int      | 是       | 用户 id        |
+| projectId | int      | 否       | 工程 id        |
+| orderId   | int      | 否       | 订单 id        |
+| page      | int      | 否       | 页数（默认 1） |
 
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
@@ -334,7 +318,7 @@
             orderStatus: 0, // 设备在订单中的状态  0 正常可抢单  1 时间冲突 2 无司机  3 未认证 4 待审核
             address: '云南省 大理市',  // 地址
             target:{
-              '吨位': 20吨  // 吨位  
+              '吨位': 20吨  // 吨位
             },
             deviceType: '挖掘机',  // 设备类型
             typeMode:'23D3O',  // 品牌型号
@@ -350,11 +334,7 @@
         ...
     ]
 }
-
-
 ```
-
-
 
 ### 4、提交选中设备
 
@@ -362,15 +342,17 @@
 接口地址：grabSingle
 请求方式：get/post
 ```
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    openid	| int | 是 |	用户id
-    projectId	| int | 是 |	工程id
-    orderId	| int | 是 |	订单id
-    price	| string | 是 |	价格
-    deviceId	| string |是 |	设备id
-    
+
+| 参数名    | 参数类型 | 是否必填 | 参数描述 |
+| --------- | -------- | -------- | -------- |
+| openid    | int      | 是       | 用户 id  |
+| projectId | int      | 是       | 工程 id  |
+| orderId   | int      | 是       | 订单 id  |
+| price     | string   | 是       | 价格     |
+| deviceId  | string   | 是       | 设备 id  |
+
 请求格式示例
+
 ```
 // 请求参数
 {
@@ -383,6 +365,7 @@
 ```
 
 返回格式：json
+
 ```
 // 返回参数
 
@@ -391,11 +374,7 @@
     'msg': '请求成功',  // 提示文案
     'data': ''
 }
-
-
 ```
-
-
 
 # 发布设备
 
@@ -403,19 +382,18 @@
 
 ### 1、获取品牌列表
 
-
 ```
 接口地址：getBrandList
 请求方式：get/post
 ```
 
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    deviceId	| int | 否 |	设备id
+| 参数名   | 参数类型 | 是否必填 | 参数描述 |
+| -------- | -------- | -------- | -------- |
+| deviceId | int      | 否       | 设备 id  |
 
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
@@ -428,26 +406,23 @@
         ]
     }
 }
-
-
 ```
 
 ### 2、获取品牌型号列表
-
 
 ```
 接口地址：getBrandModeList
 请求方式：get/post
 ```
 
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    brandId	| int | 是 |	品牌id
-    deviceId	| int | 是 |	设备id
+| 参数名   | 参数类型 | 是否必填 | 参数描述 |
+| -------- | -------- | -------- | -------- |
+| brandId  | int      | 是       | 品牌 id  |
+| deviceId | int      | 是       | 设备 id  |
 
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
@@ -458,42 +433,37 @@
         }
     ]
 }
-
-
 ```
 
-
 ### 3、提交基本信息
-
 
 ```
 接口地址：deviceInfoSubmit
 请求方式：get/post
 ```
 
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    deviceId	| int | 是 | 设备id
-    deviceName	| string | 是 | 设备名
-    brandId	| int | 是 |	品牌id
-    brandName	| string | 是 |	品牌名
-    modeId	| int | 是 | 型号id
-    modeName	| string | 是 | 型号名
-    tonnage	| int | 否 | 具体吨位值
-    out_date| string | 是 | 出厂年限
-    provinceId	| int | 是 | 省id
-    cityId	| int | 是 | 城市id
-    hourId| int | 是 | 设备小时数
-    serial| int | 是 | 设备序列号
-    tool| Boolean | 是 | 是否带锤
-    driver| Boolean | 是 | 是否带司机
-    cloudBoxSN	| int | 否 | 云盒SN
-    remark	| string | 否 | 设备说明
-    imgs	| string | 是 | 上传图片
-    cycle	| int | 是 | 租赁周期
-    
-提交格式
+| 参数名     | 参数类型 | 是否必填 | 参数描述   |
+| ---------- | -------- | -------- | ---------- |
+| deviceId   | int      | 是       | 设备 id    |
+| deviceName | string   | 是       | 设备名     |
+| brandId    | int      | 是       | 品牌 id    |
+| brandName  | string   | 是       | 品牌名     |
+| modeId     | int      | 是       | 型号 id    |
+| modeName   | string   | 是       | 型号名     |
+| tonnage    | int      | 否       | 具体吨位值 |
+| out_date   | string   | 是       | 出厂年限   |
+| provinceId | int      | 是       | 省 id      |
+| cityId     | int      | 是       | 城市 id    |
+| hourId     | int      | 是       | 设备小时数 |
+| serial     | int      | 是       | 设备序列号 |
+| tool       | Boolean  | 是       | 是否带锤   |
+| driver     | Boolean  | 是       | 是否带司机 |
+| cloudBoxSN | int      | 否       | 云盒 SN    |
+| remark     | string   | 否       | 设备说明   |
+| imgs       | string   | 是       | 上传图片   |
+| cycle      | int      | 是       | 租赁周期   |
 
+提交格式
 
 ```
 {
@@ -515,37 +485,32 @@
 }
 ```
 
-
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
     'data':''
 }
-
-
 ```
-
 
 # 个人中心
 
 ### 0、我的详情
-
 
 ```
 接口地址：getMyOrderInfo
 请求方式：get/post
 ```
 
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    userId	| int | 是 | 用户id
- 
-返回格式：json
-```
+| 参数名 | 参数类型 | 是否必填 | 参数描述 |
+| ------ | -------- | -------- | -------- |
+| userId | int      | 是       | 用户 id  |
 
+返回格式：json
+
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
@@ -561,26 +526,21 @@
         goodJob: 2, // 已完成
     }
 }
-
-
 ```
 
-
 ### 1、获取订单列表
-
 
 ```
 接口地址：getDeviceDetail
 请求方式：get/post
 ```
 
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    orderType	| int | 否 | 订单类型（默认全部）
-    openId	| int | 是 | 用户id
-    page	| int | 否 | 页数
- 
- 
+| 参数名    | 参数类型 | 是否必填 | 参数描述             |
+| --------- | -------- | -------- | -------------------- |
+| orderType | int      | 否       | 订单类型（默认全部） |
+| openId    | int      | 是       | 用户 id              |
+| page      | int      | 否       | 页数                 |
+
 请求格式
 
 ```
@@ -592,8 +552,8 @@
 ```
 
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
@@ -623,27 +583,23 @@
         ...
     ]
 }
-
-
 ```
 
 ### 2、获取设备详情
-
 
 ```
 接口地址：getDeviceDetail
 请求方式：get/post
 ```
 
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    deviceId	| int | 是 | 设备id
-    openId	| int | 否 | 用户id
- 
- 
-返回格式：json
-```
+| 参数名   | 参数类型 | 是否必填 | 参数描述 |
+| -------- | -------- | -------- | -------- |
+| deviceId | int      | 是       | 设备 id  |
+| openId   | int      | 否       | 用户 id  |
 
+返回格式：json
+
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
@@ -670,13 +626,9 @@
         cycle: 0,  // 0 短租  1 月租  2 年租
     }
 }
-
-
 ```
 
-
 ### 3、修改姓名 || 修改公司
-
 
 ```
 接口地址：editorUserInfo
@@ -685,43 +637,37 @@
 
 > 二者选一 上传
 
+| 参数名   | 参数类型 | 是否必填 | 参数描述 |
+| -------- | -------- | -------- | -------- |
+| userName | string   | 否       | 用户姓名 |
+| company  | string   | 否       | 公司名称 |
+| openId   | int      | 否       | 用户 id  |
 
-
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    userName	| string | 否 | 用户姓名
-    company	    | string | 否 | 公司名称
-    openId	| int | 否 | 用户id
- 
- 
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
     'data': ''
 }
-
-
 ```
 
 ### 4、订单详情
-
 
 ```
 接口地址：getOrderDetail
 请求方式：get/post
 ```
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    orderId	| int | 是 |	订单id
-    openId	| int | 否 | 用户id
 
+| 参数名  | 参数类型 | 是否必填 | 参数描述 |
+| ------- | -------- | -------- | -------- |
+| orderId | int      | 是       | 订单 id  |
+| openId  | int      | 否       | 用户 id  |
 
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
@@ -768,45 +714,37 @@
         ]
     }
 }
-
-
 ```
 
 ### 5、订单执行状态
-
 
 ```
 接口地址：forOrderSubmit
 请求方式：get/post
 ```
 
+| 参数名    | 参数类型 | 是否必填 | 参数描述    |
+| --------- | -------- | -------- | ----------- |
+| userId    | int      | 是       | 用户 id     |
+| orderId   | int      | 是       | 订单 id     |
+| orderType | int      | 是       | 订单执行 id |
 
-参数名|参数类型|是否必填|参数描述
-    ---|---|---|---
-    userId	| int | 是 | 用户id
-    orderId	  | int | 是 | 订单id
-    orderType | int | 是 | 订单执行id
-    
-提交json
+提交 json
 
 ```
 {
     userId: 1244,
     orderId: 4563,
-    orderType: 0   // 0 确认接单  1 确认进厂 
+    orderType: 0   // 0 确认接单  1 确认进厂
 }
-
 ```
- 
- 
+
 返回格式：json
-```
 
+```
 {
     "ret": 0//成功 失败1
     'msg': '请求成功',  // 提示文案
     'data': ''
 }
-
-
 ```
