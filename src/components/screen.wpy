@@ -1,0 +1,417 @@
+<template>
+  <view class="screen {{ceilingTop ? 'ceiling' : ''}}">
+    <view class="hint">
+      {{totality}}个设备需求已在平台发布，等你来抢
+    </view>
+    <view class="head">
+      <navigator class="city" url="/pages/chooseCity" hover-class="none">
+        <text>{{address.name}}</text>
+      </navigator>
+      <view class="empty" @tap="restartFun">
+        <text>重置所有筛选</text>
+      </view>
+    </view>
+    <!-- 时间 -->
+    <view class="timer">
+      <text>进场时间：</text>
+      <view class="section"> 
+        <picker
+          mode="date"
+          bindchange="startDateFun"
+          value="{{startTime}}"
+          start="{{currentTime}}"
+        > 
+          <view class="timevalue"> 
+          {{startTime}} 
+          </view> 
+        </picker> 
+      </view>
+      <text class="text">至</text>
+      <view class="section"> 
+        <picker
+          mode="date"
+          bindchange="endDateFun"
+          value="{{endTime}}"
+          start="{{currentTime}}"
+        > 
+          <view class="timevalue"> 
+          {{endTime}} 
+          </view> 
+        </picker> 
+      </view>
+    </view>
+    <!-- 筛选 -->
+    <view class="list">
+      <view class="text" wx:for="{{list}}" wx:key="{{index}}">
+        <picker mode="selector"
+          bindchange="bindPickerChange"
+          data-index="{{index}}"
+          data-type="{{item.type}}"
+          range="{{item.arr}}"
+          range-key="{{'name'}}"
+        >
+          <view class="picker {{changeData[item.type].id === '' ? '' : 'selected'}}">
+            {{changeData[item.type].name}}
+          </view>
+        </picker>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+export default class index extends wepy.component {
+  props = {
+    // 定位
+    address: {
+      twoWay: true
+    },
+    // 总数
+    totality: {
+      twoWay: true
+    },
+    // 吸顶
+    ceilingTop: {
+      twoWay: true
+    },
+    // 请求参数
+    submitData: {
+      twoWay: true
+    }
+  }
+  data = {
+    otherSelect: [
+      {
+        id: '',
+        name: '全部'
+      }
+    ],
+    list: [
+      {
+        name: '工程类型',
+        type: 'type',
+        arr: []
+      },
+      {
+        name: '设备类型',
+        type: 'category',
+        arr: []
+      },
+      {
+        name: '工程状态',
+        type: 'status',
+        arr: [
+          {
+            id: '',
+            name: '全部'
+          },
+          {
+            name: '进行中',
+            id: '0'
+          },
+          {
+            name: '已结束',
+            id: '1'
+          }
+        ]
+      }
+    ],
+    // 选中数据
+    changeData: {
+      status: {
+        name: '工程状态',
+        chooseName: '工程状态',
+        id: ''
+      },
+      category: {
+        name: '设备类型',
+        chooseName: '设备类型',
+        id: ''
+      },
+      type: {
+        name: '工程类型',
+        chooseName: '工程类型',
+        id: ''
+      }
+    },
+    startTime: '',
+    endTime: ''
+  }
+  mixins = [mixin]
+  async onLoad() {
+    this.startTime = this.currentTime
+    this.endTime = this.finishTime
+    this.$apply()
+    // 机型
+    await this.getMetaList()
+    await this.getCategoryList()
+  }
+
+  // 获取机型
+  getCategoryList() {
+    wepy
+      .request({
+        url: `${this.host}app/product/getCategoryList`
+      })
+      .then(res => {
+        if (res.data.ret === '0') {
+          this.list[1].arr = res.data.data
+          this.list[1].arr = [...this.otherSelect, ...res.data.data]
+          this.$apply()
+          wx.setStorage({
+            key: 'ZUCategoryList',
+            data: JSON.stringify(res.data.data)
+          })
+        }
+      })
+  }
+
+  // 获取工程类型
+  getMetaList() {
+    wepy
+      .request({
+        url: `${this.host}app/meta/getMetaList`,
+        data: {
+          keys: '7'
+        }
+      })
+      .then(res => {
+        if (res.data.ret === '0') {
+          let metaArr = []
+          res.data.data[7].forEach((ele, index) => {
+            metaArr[index] = {}
+            metaArr[index].name = ele.v
+            metaArr[index].id = ele.k
+          })
+          this.list[0].arr = metaArr
+          this.list[0].arr = [...this.otherSelect, ...metaArr]
+
+          this.$apply()
+          wx.setStorage({
+            key: 'ZUProjectType',
+            data: JSON.stringify(res.data.data)
+          })
+        }
+      })
+  }
+
+  methods = {
+    // 重置选项
+    restartFun() {
+      // 时间重置
+      this.startTime = this.currentTime
+      this.endTime = this.finishTime
+
+      // 请求参数置空
+      let keys = Object.keys(this.submitData)
+      keys.forEach(element => {
+        this.submitData[element] = ''
+        // 筛选重置
+        if (this.changeData[element]) {
+          this.changeData[element].name = this.changeData[element].chooseName
+          this.changeData[element].id = ''
+        }
+        switch (element) {
+          case 'startTime':
+            this.startTime = this.currentTime
+            this.submitData[element] = this.currentTime
+            break
+          case 'endTime':
+            this.endTime = this.finishTime
+            this.submitData[element] = this.finishTime
+            break
+        }
+      })
+
+      this.$apply()
+      this.$emit('removeCity', this.submitData)
+      // this.$emit('submitFun', this.submitData)
+    },
+    // 筛选数据
+    bindPickerChange(e) {
+      // 类型
+      const typeVal = e.target.dataset['type']
+      const listIndex = e.target.dataset['index']
+      // 选中index
+      const arrIndex = e.detail.value
+      if (arrIndex == '0') {
+        this.changeData[typeVal].name = this.changeData[typeVal].chooseName
+      } else {
+        this.changeData[typeVal].name = this.list[listIndex].arr[arrIndex].name
+      }
+
+      this.changeData[typeVal].id = this.list[listIndex].arr[arrIndex].id
+      this.submitData[typeVal] = this.list[listIndex].arr[arrIndex].id
+      this.$apply()
+      this.$emit('submitFun', this.submitData)
+    },
+    navigator() {
+      wepy.navigateTo({
+        url: '/pages/screen'
+      })
+    },
+    // 弹出筛选框
+    showList(type) {
+      this[type] = true
+      this.$apply()
+    },
+    // 开始时间
+    startDateFun(e) {
+      this.startTime = e.detail.value
+      this.submitData.startTime = this.startTime
+      this.$apply()
+      this.$emit('submitFun', this.submitData)
+    },
+    // 结束时间
+    endDateFun(e) {
+      this.endTime = e.detail.value
+      this.submitData.startTime = this.startTime
+      this.$apply()
+      this.$emit('submitFun', this.submitData)
+    }
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.screen {
+  background-color: #fff;
+  .hint {
+    background: rgba(59, 106, 251, 0.2);
+    height: 80rpx;
+    line-height: 80rpx;
+    font-size: 24rpx;
+    display: flex;
+    align-items: center;
+    font-size: 28rpx;
+    color: #3b6afb;
+    padding-left: 30rpx;
+  }
+  .head {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    height: 100rpx;
+    width: 100%;
+    padding: 0 30rpx;
+    box-sizing: border-box;
+    .city {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      min-width: 85rpx;
+      height: 100rpx;
+      padding-right: 10rpx;
+      text {
+        font-size: 28rpx;
+        color: #4a4a53;
+        margin-right: 10rpx;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      &:after {
+        content: '';
+        display: block;
+        border: 7rpx solid transparent;
+        border-top: 9rpx solid #4a4a53;
+        width: 0;
+        height: 0;
+        transform: translateY(4rpx);
+      }
+    }
+    .empty {
+      height: 100rpx;
+      line-height: 100rpx;
+      font-size: 24rpx;
+      color: #3b6afb;
+    }
+  }
+  .timer {
+    height: 60rpx;
+    padding: 14rpx 30rpx 20rpx;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    text {
+      font-size: 28rpx;
+      color: #6a6a77;
+      margin-right: 10rpx;
+    }
+    .text {
+      margin: 0 20rpx;
+    }
+    .section {
+      max-width: 240rpx;
+      min-width: 230rpx;
+      height: 60rpx;
+      border-radius: 60rpx;
+      background: #f5f8fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      picker {
+        width: 100%;
+        height: 60rpx;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      view {
+        font-size: 28rpx;
+        color: #4a4a53;
+      }
+    }
+  }
+  .list {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    height: 80rpx;
+    .text {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28rpx;
+      color: #353535;
+      text-align: center;
+      height: 80rpx;
+      line-height: 80rpx;
+      .picker {
+        max-width: 230rpx;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        &.selected {
+          color: #3b6afb;
+        }
+      }
+      &:after {
+        content: '';
+        display: block;
+        border: 7rpx solid transparent;
+        border-top: 9rpx solid #353535;
+        width: 0;
+        height: 0;
+        transform: translate3d(4rpx, 4rpx, 0);
+      }
+    }
+  }
+  &.ceiling {
+    padding-bottom: 80rpx;
+    .list {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 100%;
+      box-shadow: 0 2rpx 10rpx 0 rgba(0, 0, 0, 0.13);
+      background-color: #fff;
+    }
+  }
+}
+</style>

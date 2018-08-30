@@ -1,0 +1,158 @@
+<template>
+  <view class="container">
+    <text class="title">手机快捷登录</text>
+    <view class="inputGroup">
+      <input type="number" maxlength="11" focus value="{{inputVal}}" bindinput="inputChange"/>
+      <text class="icon" @tap="deleteVal"></text>
+    </view>
+    <view class="btn {{inputVal == '' ? 'default' : 'btnActive'}}" @tap="submitFun"><text>下一步</text></view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixins from '../mixins'
+
+export default class Index extends wepy.page {
+  config = {
+    navigationBarTitleText: '登录'
+  }
+  components = {}
+
+  mixins = [mixins]
+
+  data = {
+    inputVal: ''
+  }
+  watch = {}
+  methods = {
+    inputChange(e) {
+      var value = e.detail.value.replace(/ /g, '')
+      if (value != '') {
+        this.inputVal = e.detail.value
+      } else {
+        this.inputVal = ''
+      }
+      this.$apply()
+    },
+    deleteVal() {
+      this.inputVal = ''
+      this.$apply()
+    },
+    submitFun() {
+      wx.showLoading({
+        title: '加载中'
+      })
+      if (
+        /^1(([38]\d)|(4[57])|(5[012356789])|(6[6])|(7[0678])|(9[89]))\d{8}$/.test(
+          this.inputVal
+        )
+      ) {
+        // 发送手机号
+        wepy
+          .request({
+            url: `${this.host}app/common/sendValidationCode`,
+            data: {
+              mobile: this.inputVal
+            }
+          })
+          .then(res => {
+            wx.hideLoading()
+            let data = res.data
+            if (data.ret === '0') {
+              wx.showToast({
+                title: '验证码已发送，注意查收。',
+                icon: 'none',
+                duration: 1200
+              })
+              // 跳转
+              wepy.navigateTo({
+                url: `/pages/verificationCode?phone=${this.inputVal}`
+              })
+            }
+          })
+      } else {
+        wepy.vibrateLong()
+        wx.showToast({
+          title: '手机号输入错误',
+          icon: 'none',
+          duration: 1200
+        })
+      }
+    }
+  }
+
+  events = {}
+
+  onLoad() {}
+  onShow() {}
+}
+</script>
+
+<style lang="less" scoped>
+.container {
+  padding: 40rpx 63rpx 0 63rpx;
+  .title {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+    font-size: 44rpx;
+    color: #2d2d33;
+    letter-spacing: 0.59rpx;
+  }
+  .btnActive {
+    background: #3b6afb;
+    text {
+      color: #ffffff;
+    }
+  }
+  .default {
+    background: rgba(59, 106, 251, 0.4);
+    text {
+      color: #ffffff;
+    }
+  }
+  .btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 615rpx;
+    height: 92rpx;
+
+    border-radius: 4rpx;
+    text {
+      font-size: 32rpx;
+      letter-spacing: 0.43rpx;
+      text-align: center;
+    }
+  }
+  .inputGroup {
+    display: flex;
+    width: 100%;
+    padding: 20rpx 0;
+    margin: 55rpx 0 96rpx 0;
+    border-bottom: 1rpx solid #dce2ee;
+    input {
+      flex: 1;
+      font-size: 44rpx;
+      color: #4a4a53;
+      letter-spacing: 0.59rpx;
+    }
+    .icon {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
+      color: #dce2ee;
+      &::before {
+        content: '\e613';
+        display: block;
+        padding-right: 13rpx;
+        font-family: 'TieJia';
+        font-size: 28rpx;
+        vertical-align: middle;
+      }
+    }
+  }
+}
+</style>

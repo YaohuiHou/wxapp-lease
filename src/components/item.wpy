@@ -1,0 +1,183 @@
+<template>
+  <view class="item" @tap="gotoLink({{item.id}})">
+    <view class="header">
+      <view class="info">
+        <text class="name">{{item.name}}</text>
+        <view class="city">
+          <text>{{item.provinceName}}-{{item.cityName}}<text wx:if="{{item.countyName}}">-{{item.countyName}}</text></text>
+        </view>
+      </view>
+      <view class="status status{{item.status}}">
+        <text>{{statusText[item.status]}}</text>
+      </view>
+    </view>
+    <view class="car-info">
+      <repeat for="{{item.demandList}}" key="index" index="index" item="some" >
+        <carInfo :item.sync="some" ></carInfo>
+      </repeat>
+    </view>
+  </view>
+</template>
+
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+import carInfo from './carInfo'
+export default class Index extends wepy.component {
+  components = {
+    carInfo
+  }
+  props = {
+    item: {},
+    itemToastShow: {
+      type: Boolean,
+      twoWay: true
+    }
+  }
+  data = {
+    img: 'http://placehold.it/130x98',
+    // 工程状态   0 已抢单  1 抢单中 2 未抢单  3 已结束
+    statusText0: ['已抢单', '抢单中...', '去抢单', '已结束'],
+    statusText: ['进行中', '已结束', '已取消']
+  }
+  mixins = [mixin]
+
+  onLoad() {}
+
+  methods = {
+    gotoLink(id) {
+      wepy.navigateTo({
+        url: `/pages/project-detail?id=${escape(id)}`
+      })
+    }
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.item {
+  background: #ffffff;
+  box-shadow: 0 6rpx 10rpx 0 rgba(0, 0, 0, 0.13);
+  border-radius: 4rpx;
+  margin-bottom: 20rpx;
+  .header {
+    height: 148rpx;
+    border-bottom: 1rpx solid #eaeef5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+    padding: 28rpx 30rpx 22rpx;
+    .info {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 98rpx;
+      .name {
+        font-size: 34rpx;
+        color: #2d2d33;
+        line-height: 48rpx;
+        font-weight: bold;
+        max-width: 460rpx;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .city {
+        font-size: 24rpx;
+        color: #6a6a77;
+        line-height: 32rpx;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        text {
+          max-width: 460rpx;
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+        }
+        &:before {
+          content: '\5B9A';
+          font-family: 'TieJia';
+          display: block;
+          margin-right: 10rpx;
+          font-size: 20rpx;
+          color: #6a6a77;
+        }
+      }
+    }
+    .status {
+      width: 124rpx;
+      height: 56rpx;
+      line-height: 56rpx;
+      border-radius: 56rpx;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text {
+        font-size: 24rpx;
+        color: #ffffff;
+        line-height: 32rpx;
+      }
+      &.status0 {
+        background-color: #ffae00;
+      }
+      &.status2,
+      &.status1 {
+        background-color: rgba(158, 164, 175, 0.6);
+      }
+    }
+  }
+  .car-info {
+    padding: 24rpx 28rpx;
+    .li {
+      height: 78rpx;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-direction: row;
+      .left-info {
+        display: flex;
+        align-items: center;
+        flex-direction: row;
+        .info {
+          font-size: 28rpx;
+          color: #4a4a53;
+          font-weight: bold;
+        }
+        .status {
+          font-size: 20rpx;
+          line-height: 34rpx;
+          color: #ffffff;
+          padding: 0 8rpx;
+          border-radius: 4rpx;
+          margin-left: 8rpx;
+          &.status0 {
+            background-color: #7ed321;
+          }
+          &.status1 {
+            background-color: #ffae00;
+          }
+          &.status2 {
+            background-color: #ff5b3e;
+          }
+          &.status3 {
+            background-color: rgba(158, 164, 175, 0.6);
+          }
+        }
+      }
+      .right-info {
+        text {
+          font-size: 28rpx;
+          color: #6a6a77;
+          &:first-child {
+            margin-right: 12rpx;
+          }
+        }
+      }
+    }
+  }
+}
+</style>

@@ -1,0 +1,286 @@
+<template>
+  <view class="order">
+    <view class="header">
+      <block
+        wx:for="{{headerList}}"
+        wx:key="{{index}}"
+      >
+        <view
+          class="item {{item.selected ? 'selected' : ''}}"
+          @tap="changeTapFun({{index}})"
+        >
+          <text>{{item.name}}</text>
+        </view>
+      </block>
+    </view>
+
+    <!-- list -->
+    <view class="view">
+      <!-- 全部 -->
+      <block wx:for="{{headerList}}" wx:key="{{index}}">
+        <view class="all all{{index}}" hidden="{{selectIndex != index}}">
+          <repeat
+            for="{{list[index].list}}"
+            key="index"
+            index="index"
+            item="item"
+          >
+            <orderItem :item="item" :index="index" :submitData="submitData"></orderItem>
+          </repeat>
+          <view wx:if="{{list[index].total <= 0 && selectIndex == index}}">
+            <view class="nothing" wx:if="{{list[index].total<= 0}}">
+              <image src="https://bbs.cehome.com/wxApp/v.2/nothing.png"></image>
+              <text>什么都没有找到哟~</text>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+import orderItem from '@/components/order-item'
+
+export default class Index extends wepy.page {
+  config = {
+    navigationBarTitleText: '铁甲找活',
+    enablePullDownRefresh: true,
+    onReachBottomDistance: 50
+  }
+  components = {
+    orderItem
+  }
+  data = {
+    // loading文案
+    loadingMsg: '正在拼命加载...',
+    // 选中index
+    selectIndex: 0,
+    // 订单列表状态
+    orderType: 0,
+    // 请求参数
+    submitData: {
+      wxOpenid: '',
+      status: '',
+      pageNo: 1
+    },
+    // 页码集
+    pageList: {},
+    // 头部导航
+    headerList: [
+      {
+        name: '全部',
+        selected: false,
+        type: ''
+      },
+      {
+        name: '待确认',
+        selected: false,
+        type: 20
+      },
+      {
+        name: '已确认',
+        selected: false,
+        type: 30
+      },
+      {
+        name: '待进场',
+        selected: false,
+        type: 40
+      },
+      {
+        name: '已完成',
+        selected: false,
+        type: 50
+      },
+      {
+        name: '已取消',
+        selected: false,
+        type: 60
+      }
+    ],
+    list: {}
+  }
+  mixins = [mixin]
+
+  events = {
+    // 更新列表信息
+    upDataListFun(i) {
+      // 去除订单
+      this.list[this.selectIndex].list.splice(i, 1)
+      this.list[this.selectIndex].total -= 1
+      // 到下一页
+      this.headerList[this.selectIndex].selected = false
+      this.headerList[parseInt(this.selectIndex) + 1].selected = true
+      this.selectIndex = parseInt(this.selectIndex) + 1
+      this.$apply()
+      // 从新请求
+      this.getMyOrderList()
+    }
+  }
+  // 刷新
+  onPullDownRefresh() {
+    this.list = {}
+    this.pageList = {}
+    this.getMyOrderList(1)
+  }
+
+  // 下拉加载
+  onReachBottom() {
+    // 实际的页数
+    var num = Math.ceil(this.list[this.selectIndex].total / 10)
+    if (num >= this.pageList[this.selectIndex]) {
+      this.getMyOrderList()
+    }
+  }
+
+  onLoad(option) {
+    if (option.type) {
+      this.orderType = option.type
+      this.selectIndex = option.type
+      this.headerList[option.type].selected = true
+    } else {
+      this.headerList[0].selected = true
+    }
+    this.submitData.wxOpenid = this.$parent.globalData.wxOpenId
+    this.$apply()
+    // 请求数据
+    this.getMyOrderList()
+  }
+
+  onShow() {
+    // 统计
+    this.autoTrackPageShow('订单列表页')
+  }
+  methods = {
+    // 切换tap
+    changeTapFun(i) {
+      this.headerList.forEach(element => {
+        element.selected = false
+      })
+      this.headerList[i].selected = true
+      this.selectIndex = i
+      this.$apply()
+      // 请求数据
+      if (this.list[i]) {
+      } else {
+        this.getMyOrderList()
+      }
+    }
+  }
+
+  // 获取订单列表
+  getMyOrderList(n) {
+    this.pageList[this.selectIndex] = this.pageList[this.selectIndex]
+      ? this.pageList[this.selectIndex]
+      : 1
+    this.submitData.pageNo = this.pageList[this.selectIndex]
+    this.submitData.status = this.headerList[this.selectIndex].type
+    this.$apply()
+    wepy
+      .request({
+        url: `${this.host}app/order/getDeviceUserOrderList`,
+        data: this.submitData
+      })
+      .then(res => {
+        if (n) {
+          wx.stopPullDownRefresh()
+        }
+        if (res.data.ret === '0') {
+          if (res.data.data) {
+            if (this.list[this.selectIndex]) {
+              this.list[this.selectIndex].list = [
+                ...this.list[this.selectIndex].list,
+                ...res.data.data.list
+              ]
+            } else {
+              this.list[this.selectIndex] = res.data.data
+            }
+          }
+          // 页码
+          this.pageList[this.selectIndex] =
+            parseInt(this.pageList[this.selectIndex]) + 1
+
+          this.$apply()
+        } else {
+          this.list[this.selectIndex] = {
+            total: 0,
+            list: []
+          }
+        }
+      })
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.order {
+  min-height: 100vh;
+  height: 100%;
+  background-color: #f3f3f3;
+  .header {
+    background-color: #fff;
+    display: flex;
+    height: 84rpx;
+    .item {
+      flex: 1;
+      height: 84rpx;
+      text {
+        display: block;
+        font-size: 24rpx;
+        color: #6a6a77;
+        line-height: 84rpx;
+        height: 84rpx;
+        text-align: center;
+        position: relative;
+      }
+      &.selected text {
+        color: #3b6afb;
+        &:after {
+          position: absolute;
+          left: 50%;
+          bottom: 0;
+          content: '';
+          width: 70rpx;
+          height: 4rpx;
+          margin-left: -35rpx;
+          background-color: #3b6afb;
+        }
+      }
+    }
+  }
+  .view {
+    padding: 40rpx 20rpx 0;
+  }
+}
+.loading {
+  height: 64rpx;
+  display: block;
+  line-height: 64rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #888;
+  margin-bottom: 10rpx;
+}
+.nothing {
+  height: 340rpx;
+  display: block;
+  margin: 100rpx auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  image {
+    width: 288rpx;
+    height: 288rpx;
+    margin: 0 auto;
+  }
+  text {
+    margin-top: 30rpx;
+    color: #888;
+    font-size: 28rpx;
+  }
+}
+</style>

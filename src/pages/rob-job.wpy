@@ -1,0 +1,525 @@
+<template>
+  <view class="home">
+    <view class="header">
+      <view class="h1">{{detail.project.name}}</view>
+      <view class="city">{{detail.project.provinceName}} {{detail.project.cityName}}</view>
+      <view class="info">
+        <text>编码：{{detail.project.projectIdStr}}</text>
+        <text>单位：{{detail.project.company}}</text>
+      </view>
+      <view class="require">
+        <text wx:if="{{detail.project.fuelSupplyFlag == 1}}">包油</text>
+        <text>{{detail.project.typeDesc}}</text>
+      </view>
+    </view>
+    <view class="ul">
+       <view class="li">
+        <view class="head">
+          <view class="left">
+            <view class="top">
+              <text class="h2">{{detail.deviceNum}}台{{detail.quotaName}}{{detail.categoryName}}</text>
+            </view>
+            <view class="bottom">
+            <view class="text" wx:if="{{detail.driverFlag == 1}}">
+              <text>需司机</text>
+            </view>
+            <view class="text" wx:if="{{detail.authFlag == 1}}">
+              <text>要求认证</text>
+            </view>
+          </view>
+          </view>
+        </view>
+        <view class="info">
+          <text>进场时间：{{wxs.formatTime(detail.rentTime)}}</text>
+          <text>预计工作量：{{detail.quantity}}{{detail.priceTypeName}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="nothing" wx:if="{{!showDeviceDetail}}">没有符合要求是设备哟~</view>
+    <!-- 设备 -->
+    <view class="device-list" wx:if="{{showDeviceDetail}}">
+      <text class="h3">可选设备 {{list.matched.length}} 台</text>
+      <view class="standard">
+        <repeat for="{{list.matched}}" key="index" index="index" item="item">
+          <view class="item">
+            <deviceView :item="item" :index="index" :select="0" :priceTypeName="detail.priceTypeName"></deviceView>
+          </view>
+        </repeat>
+      </view>
+      <view class="show-btn {{showOrHide ? 'show':'hide'}}" @tap="showListFun">
+        <text>{{showBtnText}}</text>
+      </view>
+      <view class="other {{ list.unmatched.length <= 0 || showOrHide ? 'other-show':''}}">
+        <repeat for="{{list.unmatched}}" key="index" index="index" item="item">
+          <view class="normal">
+              <deviceView :item="item" :select="1"></deviceView>
+            </view>
+          </repeat>
+      </view>
+    </view>
+    <!-- 吸低 -->
+    <view  wx:if="{{list.unmatched.length > 0 || list.matched.length > 0}}" class="footer {{footerShow ? 'footer-submit' : ''}}" @tap="submitFun">
+      确认抢单设备({{amount}}/{{detail.deviceNum}})
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import uitil from '../uitil.wxs'
+import mixins from '../mixins'
+import jobItem from '@/components/job'
+import deviceView from '@/components/devices'
+
+export default class index extends wepy.page {
+  config = {
+    navigationBarTitleText: '抢活'
+  }
+  components = { jobItem, deviceView }
+
+  mixins = [mixins]
+
+  wxs = {
+    wxs: uitil
+  }
+
+  data = {
+    showDeviceDetail: false,
+    amount: 0,
+    footerShow: false,
+    statusText: ['已抢单', '抢单中...', '未抢单', '已结束'],
+    btns: { 1: '查看订单', 2: '马上抢单' },
+    showBtn: true,
+    // 是否展示
+    showOrHide: false,
+    showBtnText: '展开',
+    // 工程类型 列表
+    type: null,
+    // 工程类型
+    projectType: '',
+    // 工程设备要求
+    devices: {},
+    // 工程详情
+    detail: {},
+    // 设备列表
+    list: null,
+    submitDisable: false,
+    // 工程id
+    projectId: ''
+  }
+  watch = {}
+  methods = {
+    // 展开
+    showListFun() {
+      if (this.showOrHide) {
+        this.showOrHide = false
+        this.showBtnText = '展开'
+      } else {
+        this.showOrHide = true
+        this.showBtnText = '收起'
+      }
+      this.$apply()
+    },
+    // 提交
+    submitFun() {
+      if (!this.footerShow) return
+      // 设备id
+      var deviceIdArr = [],
+        priceArr = [],
+        deviceIds = '',
+        prices = ''
+      // 获取提交数据
+      this.list.matched.forEach(element => {
+        if (element.selected) {
+          deviceIdArr.push(element.id)
+          if (element.price) {
+            priceArr.push(element.price)
+            this.priceDisable = false
+          } else {
+            wepy.showToast({
+              icon: 'none',
+              title: '创建订单设备报价不能为空',
+              duration: 2000
+            })
+            this.priceDisable = true
+          }
+        }
+      })
+      // 报价验证
+      if (this.priceDisable) return
+      // 多次点击预防
+      if (this.submitDisable) return
+      this.submitDisable = true
+
+      // 统计
+      this.setSensorsData({
+        Category: '点击确认抢单设备按钮',
+        Action: '',
+        Label: ''
+      })
+
+      deviceIds = deviceIdArr.join(',')
+      prices = priceArr.join(',')
+      wx.showLoading({
+        title: '加载中'
+      })
+      wepy
+        .request({
+          url: `${this.host}app/order/robOrder`,
+          method: 'POST',
+          header: {
+            'content-Type': 'application/x-www-form-urlencoded',
+            client: 'm'
+          },
+          data: {
+            demandId: this.demandId,
+            wxOpenid: this.$parent.globalData.wxOpenId,
+            deviceIds: deviceIds,
+            prices: prices
+          }
+        })
+        .then(res => {
+          this.submitDisable = false
+          if (res.data.ret == '0') {
+            wx.hideLoading()
+            // 跳转页面
+            wepy.redirectTo({
+              url: `/pages/order-detail?id=${escape(res.data.msg)}`
+            })
+          } else {
+            wepy.showToast({
+              icon: 'none',
+              title: res.data.msg,
+              duration: 1000
+            })
+          }
+        })
+    }
+  }
+
+  events = {
+    // 选中
+    selectedItemFun: index => {
+      this.list.matched[index].selected = !this.list.matched[index].selected
+      if (this.list.matched[index].selected) {
+        if (this.footerShow) {
+          this.list.matched[index].selected = false
+          this.$apply()
+          return
+        }
+        this.amount += 1
+      } else {
+        this.amount -= 1
+      }
+      // 选完
+      if (this.detail.deviceNum == this.amount) {
+        this.footerShow = true
+      } else {
+        this.footerShow = false
+      }
+      this.$apply()
+    },
+    // 价格
+    priceDeviceFun(index, price) {
+      this.list.matched[index].price = price
+      this.$apply()
+    }
+  }
+  onLoad(option) {
+    this.getProjectDemand()
+    if (option.id) {
+      this.demandId = unescape(option.id)
+      this.projectId = unescape(option.projectId)
+      this.$apply()
+      this.getProjectDemand(this.demandId)
+    }
+    wx.getStorage({
+      key: 'ZUProjectType',
+      success: res => {
+        if (res.data) {
+          this.type = JSON.parse(res.data)
+          this.$apply()
+        }
+      }
+    })
+  }
+  onShow() {
+    this.getMatchedDevices()
+    // 统计
+    this.autoTrackPageShow('需求详情页')
+  }
+
+  // 需求详情
+  getProjectDemand(id) {
+    wepy
+      .request({
+        url: `${this.host}app/project/getDemand`,
+        data: {
+          demandId: id,
+          wxOpenid: this.$parent.globalData.wxOpenId
+        }
+      })
+      .then(res => {
+        if (res.data.ret == '0') {
+          this.detail = res.data.data
+          this.$apply()
+        }
+      })
+  }
+
+  // 匹配的设备情况
+  getMatchedDevices() {
+    wepy
+      .request({
+        url: `${this.host}app/device/getMatchedDevices`,
+        data: {
+          demandId: this.demandId,
+          wxOpenid: this.$parent.globalData.wxOpenId
+        }
+      })
+      .then(res => {
+        if (res.data.ret == '0') {
+          let list = res.data.data
+          // 编辑设备进来
+          if (this.list) {
+            this.list.matched.forEach(element => {
+              if (element.selected) {
+                list.matched.forEach(ele => {
+                  if (ele.id == element.id) {
+                    ele.selected = true
+                    ele.price = element.price
+                  }
+                })
+              }
+            })
+          }
+          this.list = list
+          this.showDeviceDetail = true
+        } else {
+          this.showDeviceDetail = false
+        }
+        this.$apply()
+      })
+  }
+
+  // // 分享
+  // onShareAppMessage(res) {
+  //   // 分享
+  //   if (res.from === 'button') {
+  //   }
+  //   return {
+  //     title: this.shareTitle,
+  //     path: `/pages/index?robProjectId=${escape(
+  //       this.projectId
+  //     )}&demandId=${escape(this.demandId)}`,
+  //     success: async res => {},
+  //     fail: res => {
+  //       // 转发失败
+  //     }
+  //   }
+  // }
+}
+</script>
+
+<style lang="less" scoped>
+.home {
+  background: #f3f3f3;
+  .header {
+    background-color: #fff;
+    padding: 30rpx 40rpx 40rpx 40rpx;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    .h1 {
+      font-size: 44rpx;
+      color: #2d2d33;
+      line-height: 60rpx;
+      font-weight: bold;
+      margin-bottom: 14rpx;
+    }
+    .city {
+      font-size: 24rpx;
+      color: #6a6a77;
+      line-height: 32rpx;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      &:before {
+        content: '\5B9A';
+        font-family: 'TieJia';
+        display: block;
+        margin-right: 10rpx;
+        font-size: 20rpx;
+        color: #6a6a77;
+      }
+    }
+    .info {
+      padding: 30rpx 0;
+      height: 78rpx;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text {
+        font-size: 24rpx;
+        color: #6a6a77;
+        line-height: 32rpx;
+      }
+    }
+    .require {
+      display: flex;
+      flex-direction: row;
+      text {
+        margin-right: 16rpx;
+        font-size: 20rpx;
+        color: #6a6a77;
+        line-height: 44rpx;
+        padding: 0 14rpx;
+        background: #f5f8fa;
+        border-radius: 4rpx;
+      }
+    }
+  }
+  .ul {
+    border-top: 1rpx solid #dce2ee;
+    background-color: #fff;
+    margin-bottom: 20rpx;
+    .li {
+      padding: 30rpx 40rpx;
+      .head {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        height: 108rpx;
+        padding-bottom: 30rpx;
+        .left {
+          height: 108rpx;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          .top {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding-bottom: 20rpx;
+            .h2 {
+              font-size: 40rpx;
+              color: #2d2d33;
+              line-height: 56rpx;
+              margin-right: 18rpx;
+              font-weight: bold;
+            }
+          }
+          .bottom {
+            display: flex;
+            flex-direction: row;
+            .text {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 0 12rpx;
+              height: 40rpx;
+              border-radius: 4rpx;
+              margin-right: 16rpx;
+              box-sizing: border-box;
+              border: 1rpx solid #fb7530;
+              text {
+                font-size: 20rpx;
+                color: #fb7530;
+                line-height: 24rpx;
+              }
+            }
+          }
+        }
+      }
+      .info {
+        display: flex;
+        flex-direction: column;
+        text {
+          font-size: 28rpx;
+          color: #6a6a77;
+          line-height: 40rpx;
+        }
+      }
+    }
+  }
+  .device-list {
+    background-color: #fff;
+    padding-top: 28rpx;
+    padding-bottom: 40rpx;
+    .h3 {
+      font-size: 32rpx;
+      color: #4a4a53;
+      padding-left: 40rpx;
+      line-height: 44rpx;
+    }
+    .show-btn {
+      height: 40rpx;
+      padding: 26rpx 0 4rpx;
+      display: flex;
+      width: 100%;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      font-size: 28rpx;
+      color: #486cdc;
+      &.show {
+        text:after {
+          transform: rotate(180deg);
+        }
+      }
+      text {
+        position: relative;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        &:after {
+          content: '\7BAD';
+          font-family: 'TieJia';
+          display: block;
+          border-radius: 50%;
+          color: #486cdc;
+          font-size: 24rpx;
+          line-height: 24rpx;
+          margin-left: 12rpx;
+          transition: all 0.4s linear;
+        }
+      }
+    }
+    .other {
+      height: 0;
+      overflow: hidden;
+      margin-bottom: 150rpx;
+      transition: height 1s linear;
+      &.other-show {
+        height: auto;
+      }
+    }
+  }
+  .footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 98rpx;
+    font-size: 32rpx;
+    color: #ffffff;
+    line-height: 98rpx;
+    text-align: center;
+    background: #a6bbfa;
+    z-index: 100;
+    transition: background 0.3s linear;
+    &.footer-submit {
+      background: #3b6afb;
+    }
+  }
+}
+.nothing {
+  font-size: 32rpx;
+  color: #2d2d33;
+  text-align: center;
+  background-color: #fff;
+  padding: 80rpx 0;
+}
+</style>

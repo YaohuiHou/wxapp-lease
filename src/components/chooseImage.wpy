@@ -1,0 +1,307 @@
+<template>
+  <view class="view">
+    <view class="list-view">
+      <view class="header">
+        <text>设备照片</text>（请上传四张设备照片）
+      </view>
+      <view class="list">
+        <block wx:for="{{device}}" wx:key="{{index}}">
+          <view class="item" @tap="chooseImage({{index}})">
+            <text wx:if="{{!imageList[index]}}">{{item}}</text>
+            <image mode="aspectFill"  wx:if="{{imageList[index]}}" src="{{imageList[index]}}"></image>
+          </view>
+        </block>
+      </view>
+    </view>
+    <view class="list-view">
+      <view class="header">
+        <text>证件照片</text>（证件齐全可提高抢活成功率）
+      </view>
+      <view class="list">
+        <block wx:for="{{papers}}" wx:key="{{index}}">
+          <view class="item" @tap="chooseImage({{index}})">
+            <text wx:if="{{!imageList[index]}}">{{item}}</text>
+            <image mode="aspectFill"  wx:if="{{imageList[index]}}" src="{{imageList[index]}}"></image>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <!-- 按钮 -->
+    <view class="footer" wx:if="{{headerShow}}">
+      <text class="delete" @tap="editDevice(0)">删除设备</text>
+      <text class="save" @tap="editDevice(1)">保存</text>
+    </view>
+    <view class="footer" wx:if="{{!headerShow}}" @tap="submit">
+      <text class="save">发布设备</text>
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+export default class Index extends wepy.component {
+  props = {
+    detail: {
+      twoWay: true
+    },
+    headerShow: {
+      twoWay: true
+    },
+    submitData: {
+      twoWay: true
+    },
+    scrollId: {
+      twoWay: true
+    }
+  }
+  data = {
+    device: { 1: '设备正面', 2: '设备侧面', 3: '设备关键部件', 4: '设备铭牌' },
+    papers: { 5: '操作证', 6: '年检报告' },
+    imageList: {},
+    submitImageList: {},
+    butText: '发布设备'
+  }
+  mixins = [mixin]
+  watch = {
+    detail() {
+      this.detail.imageList.forEach(element => {
+        this.imageList[element.type] = element.url
+      })
+      this.submitImageList = this.imageList
+
+      this.$apply()
+    }
+  }
+
+  methods = {
+    // 上传图片
+    chooseImage(i) {
+      if (this.headerShow && i <= 4) {
+        wx.showModal({
+          title: '铁甲提示',
+          content: '修改设备照片需要重新审核，确定修改吗？',
+          success: res => {
+            if (res.confirm) {
+              this.chooseImageFun(i)
+            } else if (res.cancel) {
+              console.log('用户点击取消')
+            }
+          }
+        })
+      } else {
+        this.chooseImageFun(i)
+      }
+    },
+    // 提交
+    submit() {
+      this.submitDevice()
+    },
+    // 编辑保存
+    editDevice(type) {
+      this.$emit('editDevice', type)
+    }
+  }
+  // 上传图片
+  chooseImageFun(i) {
+    if (this.upImgDisable) return
+    this.upImgDisable = true
+    wx.chooseImage({
+      count: 1, // 默认9
+      sizeType: ['original', 'compressed'], // 可以指定是原图还是压缩图，默认二者都有
+      sourceType: ['album', 'camera'], // 可以指定来源是相册还是相机，默认二者都有
+      success: res => {
+        wx.showLoading({
+          title: '正在上传图片'
+        })
+        // 返回选定照片的本地文件路径列表，tempFilePath可以作为img标签的src属性显示图片
+        var tempFilePaths = res.tempFilePaths[0]
+        if (tempFilePaths) {
+          this.imageList[i] = tempFilePaths
+          this.$apply()
+          wx.uploadFile({
+            url: `${this.host}app/image/upload`,
+            filePath: tempFilePaths,
+            // header: {
+            //   'content-type': 'multipart/form-data'
+            // },
+            name: 'file',
+            complete: res => {
+              this.upImgDisable = false
+              wx.hideLoading()
+              var data = JSON.parse(res.data)
+              if (data.ret == '0') {
+                this.submitImageList[i] = data.data
+              } else {
+                this.submitImageList[i] = ''
+                wepy.showToast({
+                  icon: 'none',
+                  title: '网络问题，请重新上传~',
+                  duration: 1500
+                })
+              }
+            }
+          })
+        }
+      },
+      fail: res => {
+        this.upImgDisable = false
+        wx.hideLoading()
+      }
+    })
+  }
+
+  // 提交
+  submitDevice(id) {
+    let imgsList = []
+    let imgsLength = Object.keys(this.submitImageList).length
+    for (const key in this.submitImageList) {
+      imgsList[key - 1] = {
+        type: key,
+        url: this.submitImageList[key]
+      }
+    }
+
+    if (imgsLength >= 4) {
+      wx.showLoading({
+        title: '加载中'
+      })
+      // 发送ajax
+      this.submitData.imageListStr = JSON.stringify(imgsList)
+      if (id) {
+        this.submitData.id = id
+      }
+      // 点击限制
+      if (this.submitDisable) return
+      this.submitDisable = true
+      wepy
+        .request({
+          url: `${this.host}app/device/saveDevice`,
+          method: 'POST',
+          header: {
+            'content-Type': 'application/x-www-form-urlencoded',
+            client: 'm'
+          },
+          data: this.submitData
+        })
+        .then(res => {
+          console.log(res, 'res')
+          wx.hideLoading()
+          if (res.data.ret == '0') {
+            // 清除数据
+            if (!this.headerShow) {
+              this.imageList = {}
+              this.submitImageList = {}
+              this.$apply()
+            }
+            this.$emit('removeSubmitData', res.data.data)
+            // 返回顶部
+            this.scrollId = 'head'
+          } else {
+            wepy.showToast({
+              icon: 'none',
+              title: res.data.msg,
+              duration: 1000
+            })
+          }
+          this.submitDisable = false
+          // 移除选中城市
+          wx.removeStorage({
+            key: 'ZUcityObj'
+          })
+        })
+        .catch(err => {
+          console.log(err)
+        })
+    } else {
+      wepy.showToast({
+        icon: 'none',
+        title: '请上传四张设备的照片',
+        duration: 1000
+      })
+    }
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.list-view {
+  background-color: #fff;
+  padding: 0 40rpx;
+  margin-bottom: 20rpx;
+  .header {
+    padding: 38rpx 0;
+    line-height: 44rpx;
+    font-size: 32rpx;
+    color: #6a6a77;
+    text {
+      color: #2d2d33;
+      font-weight: 500;
+    }
+  }
+  .list {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    justify-content: space-between;
+    .item {
+      width: 310rpx;
+      height: 220rpx;
+      margin-bottom: 40rpx;
+      border: 1rpx dotted #979797;
+      border-radius: 4rpx;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      image {
+        width: 100%;
+        height: 100%;
+      }
+      text {
+        font-size: 20rpx;
+        color: #9ea4af;
+        text-align: center;
+        &:before {
+          display: block;
+          content: '\76f8';
+          font-family: 'TieJia';
+          width: 100%;
+          height: 44rpx;
+          line-height: 44rpx;
+          font-size: 44rpx;
+          margin-bottom: 12rpx;
+          color: #9ea4af;
+          text-align: center;
+        }
+      }
+    }
+  }
+}
+.footer {
+  background: #f3f3f3;
+  padding: 50rpx 40rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  text {
+    flex: 1;
+    height: 98rpx;
+    line-height: 98rpx;
+    text-align: center;
+    font-size: 32rpx;
+    border-radius: 4rpx;
+    box-sizing: border-box;
+  }
+  .save {
+    color: #fff;
+    background: #3b6afb;
+  }
+  .delete {
+    color: #ff5b3e;
+    border: 1rpx solid #ff5b3e;
+    margin-right: 30rpx;
+  }
+}
+</style>

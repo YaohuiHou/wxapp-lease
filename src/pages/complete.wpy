@@ -1,0 +1,139 @@
+<template>
+  <view class="view">
+    <view class="item">
+      <input
+        type="text"
+        placeholder-style="color: #9EA4AF;"
+        placeholder="{{info[index].placeholder}}"
+        value="{{info[index].value}}"
+        confirm-type="send"
+        bindconfirm="changeFun"
+      />
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+export default class Index extends wepy.page {
+  config = {
+    navigationBarTitleText: '实名认证'
+  }
+  data = {
+    index: 0,
+    info: [
+      {
+        placeholder: '请输入您的真实姓名',
+        value: ''
+      },
+      {
+        placeholder: '请输入您所在企业单位的名称',
+        value: ''
+      }
+    ],
+    userInfo: null
+  }
+  mixins = [mixin]
+  onLoad(option) {
+    this.index = option.id
+    switch (Number(option.id)) {
+      case 0:
+        wepy.setNavigationBarTitle({
+          title: '实名认证'
+        })
+        break
+
+      default:
+        wepy.setNavigationBarTitle({
+          title: '企业信息'
+        })
+        break
+    }
+    // 缓存个人信息
+    wx.getStorage({
+      key: 'userInfoObj',
+      success: res => {
+        this.userInfo = JSON.parse(res.data)
+        this.info[0].value = this.userInfo.realName
+        this.info[1].value = this.userInfo.company
+        this.$apply()
+      }
+    })
+  }
+  onShow() {}
+  methods = {
+    changeFun(e) {
+      if (e.detail.value.trim().length > 0) {
+        wepy.showLoading({
+          title: '数据提交中...'
+        })
+        switch (Number(this.index)) {
+          case 0:
+            // 修改姓名
+            this.userInfo.realName = e.detail.value
+            this.$apply()
+            this.submitMyInfo()
+            break
+          default:
+            // 修改企业信息
+            this.userInfo.company = e.detail.value
+            this.$apply()
+            this.submitMyInfo()
+            break
+        }
+      }
+    }
+  }
+
+  // 提交个人信息
+  submitMyInfo() {
+    // 提交
+    wepy
+      .request({
+        url: `${this.host}app/device/saveUser`,
+        data: {
+          cityCode: this.userInfo.cityCode,
+          company: this.userInfo.company,
+          mobile: this.userInfo.mobile,
+          realName: this.userInfo.realName,
+          wxName: this.userInfo.wxName,
+          wxPortrait: this.userInfo.wxPortrait,
+          wxOpenid: this.$parent.globalData.wxOpenId
+        }
+      })
+      .then(res => {
+        this.goback()
+      })
+  }
+
+  // 返回
+  goback() {
+    wx.setStorage({
+      key: 'userInfoObj',
+      data: JSON.stringify(this.userInfo),
+      success: res => {
+        wepy.navigateBack({
+          delta: 1
+        })
+      }
+    })
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.item {
+  height: 88rpx;
+  padding: 0 40rpx;
+  display: flex;
+  align-items: center;
+  border-bottom: 1rpx solid rgba(220, 226, 238, 0.6);
+  input {
+    line-height: 40rpx;
+    font-size: 28rpx;
+    color: #2d2d33;
+    width: 100%;
+  }
+}
+</style>

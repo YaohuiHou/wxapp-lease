@@ -1,0 +1,197 @@
+<template>
+  <view class="home">
+    <navigator url="/pages/demand" open-type="switchTab" hover-class="none">
+      <view class="header">
+      <text>新增设备</text>
+      </view>
+    </navigator>
+    <!-- 设备 -->
+    <view class="device-list">
+       <repeat for="{{list}}" key="index" index="index" item="item">
+          <div class="device">
+            <deviceView :item="item" :index="index"></deviceView>
+          </div>
+        </repeat>
+    </view>
+    <!-- loading -->
+      <text wx:if="{{list.length>0}}" class="loading">{{loadingMsg}}</text>
+    <!-- 空 -->
+    <view class="nothing" wx:if="{{list.length<=0}}">
+      <image src="https://bbs.cehome.com/wxApp/v.2/nothing.png"></image>
+      <text>还没有设备哟，快去添加吧~</text>
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixins from '../mixins'
+import deviceView from '@/components/my-devices'
+
+export default class index extends wepy.page {
+  config = {
+    navigationBarTitleText: '我的设备',
+    enablePullDownRefresh: true,
+    backgroundTextStyle: 'light',
+    onReachBottomDistance: 50
+  }
+  components = { deviceView }
+  mixins = [mixins]
+
+  data = {
+    amount: '2',
+    btns: { 1: '查看订单', 2: '马上抢单' },
+    showBtn: true,
+    // loading文案
+    loadingMsg: '正在拼命加载...',
+    // 数据
+    padeIndex: 1,
+    // 设备列表
+    list: []
+  }
+  watch = {}
+  methods = {}
+
+  events = {
+    selectedItemFun: index => {
+      this.list[index].selected = !this.list[index].selected
+      this.$apply()
+    }
+  }
+  onLoad() {
+    this.getMyDevices()
+  }
+  onShow() {
+    wx.getStorage({
+      key: 'ZUDeviceUpData',
+      success: res => {
+        if (res.data == 1) {
+          this.list = []
+          this.padeIndex = 1
+          this.getMyDevices()
+        }
+      }
+    })
+    // 统计
+    this.autoTrackPageShow('设备列表页')
+  }
+
+  // 刷新
+  onPullDownRefresh() {
+    if (this.homeDataDisable) return
+    this.homeDataDisable = true
+    this.padeIndex = 1
+    this.$apply()
+    this.getMyDevices(1)
+  }
+  // 下拉加载
+  onReachBottom() {
+    if (this.homeDataDisable) return
+    this.homeDataDisable = true
+    this.padeIndex = Number(this.padeIndex) + 1
+    this.$apply()
+    this.getMyDevices()
+  }
+
+  // 获取设备列表
+  getMyDevices(n) {
+    wepy
+      .request({
+        url: `${this.host}app/device/getMyDevices`,
+        data: {
+          pageNo: this.padeIndex,
+          wxOpenid: this.$parent.globalData.wxOpenId
+        }
+      })
+      .then(res => {
+        let data = res.data
+        if (data.ret === '0') {
+          if (n) {
+            wx.stopPullDownRefresh()
+          }
+
+          if (data.data && data.data.list) {
+            this.list = [...this.list, ...data.data.list]
+
+            // 总页数
+            this.listTotal = Math.ceil(
+              data.data.total / (data.data.pageSize ? data.data.pageSize : 10)
+            )
+
+            if (this.padeIndex >= this.listTotal) {
+              this.homeDataDisable = true
+              this.loadingMsg = '哎呦喂，已经见底了。'
+            } else {
+              this.homeDataDisable = false
+              this.loadingMsg = '正在拼命加载...'
+            }
+          }
+
+          this.$apply()
+          wx.removeStorage({
+            key: 'ZUDeviceUpData'
+          })
+        }
+      })
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.home {
+  background: #f3f3f3;
+  min-height: 100vh;
+  .header {
+    height: 110rpx;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+    background-color: #fff;
+    &:before {
+      content: '\52a0';
+      font-family: 'TieJia';
+      color: #3b6afb;
+      font-size: 34rpx;
+      line-height: 44rpx;
+      margin-right: 16rpx;
+    }
+    text {
+      font-size: 32rpx;
+      color: #3b6afb;
+      line-height: 44rpx;
+    }
+  }
+  .device-list {
+    background: #f3f3f3;
+  }
+  .nothing {
+    height: 340rpx;
+    display: block;
+    margin: 100rpx auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    image {
+      width: 288rpx;
+      height: 288rpx;
+      margin: 0 auto;
+    }
+    text {
+      margin-top: 30rpx;
+      color: #888;
+      font-size: 28rpx;
+    }
+  }
+}
+.loading {
+  height: 64rpx;
+  display: block;
+  line-height: 64rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #888;
+  margin-bottom: 10rpx;
+}
+</style>

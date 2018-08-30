@@ -1,0 +1,31 @@
+var formatTime = function (timestamp) {
+  var date = getDate(timestamp * 1000) // 时间戳为10位需*1000，时间戳为13位的话不需乘1000
+  Y = date.getFullYear() + '-'
+  M = (date.getMonth() + 1 < 10 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1) + '-'
+  D = date.getDate() < 10 ? '0' + date.getDate() : date.getDate()
+  return Y + M + D
+}
+
+var showTime = function (timestamp) {
+  var date = getDate(timestamp * 1000) // 时间戳为10位需*1000，时间戳为13位的话不需乘1000
+  Y = date.getFullYear() + '年'
+  M = (date.getMonth() + 1 < 10 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1) + '月'
+  D = date.getDate() + '日'
+
+  if (D) {
+    return Y + M + D
+  } else {
+    return Y + M
+  }
+}
+
+var addTextTime = function (time) {
+  var t = time + ''
+  var year = t.substring(0, 4)
+  var month = t.substring(4, 6)
+  return year + '年' + month + '月'
+}
+
+module.exports.formatTime = formatTime
+module.exports.showTime = showTime
+module.exports.addTextTime = addTextTime

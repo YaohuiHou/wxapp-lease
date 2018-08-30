@@ -1,0 +1,254 @@
+<template>
+  <view class="contariner">
+    <scroll-view class="content" scroll-y="{{scrollNeed}}" bindscrolltolower="loadDeviceList" bindscroll="scrollScreen" enable-back-to-top="true">
+      <view class="currentLocation">
+          <text class="title">定位到位置</text>
+          <view class="city"><text class="location">{{allCity.name}}</text></view>
+      </view>
+      <view class="currentLocation">
+          <text class="title">热门城市</text>
+          <view class="city">
+            <block wx:for="{{hotCity}}" wx:key="{{index}}">
+              <text class="hotCity" @tap="hotCityFun({{item}})">{{item.name}}</text>
+            </block>
+          </view>
+      </view>
+      <view class="province">
+        <block wx:for="{{cityList}}" wx:key="{{index}}">
+            <text @tap="choose({{item}})">{{item.name}}</text>
+        </block>
+      </view>
+    </scroll-view>
+    <sidebar
+      :sidebarInfo.sync="sidebarInfo"
+      :cityData.sync="cityData"
+    ></sidebar>
+
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixins from '../mixins'
+import sidebar from '../components/sidebar'
+export default class Index extends wepy.page {
+  config = {
+    navigationBarTitleText: '选择城市'
+  }
+  components = {
+    sidebar
+  }
+
+  mixins = [mixins]
+
+  data = {
+    scrollNeed: true,
+    // 二级城市
+    cityData: null,
+    sidebarInfo: {
+      show: false
+    },
+    allCity: {
+      name: '全国',
+      code: ''
+    },
+    stotageData: {},
+    // 热门城市
+    hotCity: [
+      {
+        name: '全国',
+        code: ''
+      }
+    ],
+    // 城市列表
+    cityList: []
+  }
+  watch = {}
+  methods = {
+    choose(item) {
+      this.sidebarInfo.show = true
+      this.cityData = item
+      this.scrollNeed = false
+      // this.scrollNeed = false
+      this.$apply()
+    },
+    // 热门城市
+    async hotCityFun(hot) {
+      this.setCityFun(hot)
+    }
+  }
+
+  events = {
+    hide: res => {
+      this.sidebarInfo.show = false
+      this.scrollNeed = true
+      // this.scrollNeed = true
+      this.$apply()
+    },
+    chooseItem: (res, obj) => {
+      // 省份 obj
+      res.parent = obj
+      this.setCityFun(res)
+    }
+  }
+
+  onLoad() {
+    // 获取城市列表
+    wx.getStorage({
+      key: 'ZUcitiesList',
+      complete: async res => {
+        if (!res.data) {
+          // 获取城市
+          await this.getCityList()
+          await this.getHotCityList()
+        } else {
+          let data = JSON.parse(res.data)
+          this.hotCity = [...this.hotCity, ...data.hotCityList]
+          this.cityList = data.allCityList
+          this.$apply()
+          wx.hideLoading()
+        }
+      }
+    })
+
+    // 获取城市定位信息
+    wx.getStorage({
+      key: 'ZUcityObj',
+      success: res => {
+        let data = JSON.parse(res.data)
+        this.allCity = data
+        this.$apply()
+      },
+      fail: res => {}
+    })
+  }
+  onShow() {}
+
+  // 存储数据
+  async setCityFun(item) {
+    this.allCity = item
+    this.$apply()
+
+    await wx.setStorage({
+      key: 'ZUcityObj',
+      data: JSON.stringify(item)
+    })
+
+    await wx.navigateBack({
+      delta: 1
+    })
+  }
+
+  // 获取热门城市
+  getHotCityList() {
+    wepy
+      .request({
+        url: `${this.host}app/district/getHotCityList`
+      })
+      .then(res => {
+        if (res.data.ret === '0' && res.data.data) {
+          this.hotCity = res.data.data
+          this.stotageData.hotCityList = res.data.data
+          wx.setStorage({
+            key: 'ZUcitiesList',
+            data: JSON.stringify(this.stotageData)
+          })
+        }
+      })
+  }
+
+  // 获取城市
+  getCityList() {
+    wepy
+      .request({
+        url: `${this.host}app/district/getProvinceCityList`
+      })
+      .then(res => {
+        if (res.data.ret === '0' && res.data.data) {
+          this.cityList = res.data.data
+          this.stotageData.allCityList = res.data.data
+          wx.setStorage({
+            key: 'ZUcitiesList',
+            data: JSON.stringify(this.stotageData)
+          })
+        }
+      })
+  }
+}
+</script>
+
+<style lang="less" scoped>
+@padding-30: 30rpx;
+.contariner {
+  background-color: #f9f9f9;
+  overflow: hidden;
+  height: 100vh;
+  .content {
+    height: 100vh;
+    position: relative;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    .province {
+      margin-top: 20rpx;
+      padding-left: @padding-30;
+      background-color: #ffffff;
+      text {
+        display: inline-block;
+        width: 100%;
+        text-align: left;
+        padding: @padding-30 0;
+        font-size: 28rpx;
+        color: #4a4a53;
+        letter-spacing: 0;
+        border-bottom: 1rpx solid rgba(220, 226, 238, 0.6);
+      }
+    }
+    .currentLocation {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      .title {
+        display: inline-block;
+        padding: 13rpx @padding-30;
+        font-size: 30rpx;
+        color: #9ea4af;
+        letter-spacing: 0.32rpx;
+      }
+      .city {
+        padding: 20rpx 0;
+        background-color: #ffffff;
+        .location {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          font-size: 28rpx;
+          color: #4a4a53;
+          letter-spacing: 0.35rpx;
+          padding-left: 30rpx;
+          &::before {
+            content: '\e7d0';
+            display: block;
+            padding-right: 13rpx;
+            font-family: 'TieJia';
+            font-size: 22rpx;
+            vertical-align: middle;
+          }
+        }
+        .hotCity {
+          display: inline-block;
+          padding: 4rpx 22rpx;
+          margin: 10rpx 30rpx;
+          box-sizing: border-box;
+          min-width: 172rpx;
+          text-align: center;
+          font-size: 28rpx;
+          color: #4a4a53;
+          letter-spacing: 0.3rpx;
+          background: #f5f8fa;
+          border-radius: 4rpx;
+        }
+      }
+    }
+  }
+}
+</style>

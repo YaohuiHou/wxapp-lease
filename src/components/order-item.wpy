@@ -1,0 +1,317 @@
+<template>
+  <view class="li">
+    <view @tap="gotoLink({{item.id}})" class="device">
+      <view class="head">
+        <text class="name">{{item.demand.project.company}}</text>
+        <text class="status status{{item.statusKey}}">{{item.statusDesc}}</text>
+      </view>
+      <text class="h2">{{item.demand.quotaName}}{{item.demand.categoryName}}</text>
+      <view class="info">
+        <text>进场时间：{{wxs.formatTime(item.demand.rentTime)}}</text>
+        <text>预计工作量：{{item.demand.quantity}}{{item.demand.priceTypeName}}</text>
+      </view>
+    </view>
+    <!-- 按钮 -->
+    <view class="footer" wx:if="{{buttonArr[item.statusKey].length}}">
+      <text wx:for="{{buttonArr[item.statusKey]}}" wx:for-item="arr" wx:for-index="i" wx:key="i" @tap="buttonChangeFun({{arr.type}},{{item}},{{index}})">{{arr.name}}</text>
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixins from '../mixins'
+import uitil from '../uitil.wxs'
+
+export default class index extends wepy.component {
+  props = {
+    item: {
+      twoWay: true
+    },
+    index: {},
+    submitData: {
+      twoWay: true
+    },
+    date: {
+      twoWay: true
+    }
+  }
+  wxs = {
+    wxs: uitil
+  }
+  mixins = [mixins]
+
+  data = {
+    /*
+    statusKey=1,statusDesc=待抢单，目前没有此业务逻辑
+    statusKey=2,statusDesc=设备待确认，不显示任何按钮
+    statusKey=3,statusDesc=待设备进场，显示联系对方和确认进场按钮
+    statusKey=4,statusDesc=待工程方确认进场，显示联系对方按钮
+    statusKey=5,statusDesc=已完成，显示联系对方按钮
+    statusKey=6,statusDesc=已取消，不显示任何按钮
+    statusKey=7,statusDesc=设备未中标，不显示任何按钮
+    */
+    buttonArr: {
+      3: [
+        {
+          name: '确认进场',
+          type: 2
+        },
+        {
+          name: '联系对方',
+          type: 0
+        }
+      ],
+      4: [
+        {
+          name: '联系对方',
+          type: 0
+        }
+      ],
+      5: [
+        {
+          name: '联系对方',
+          type: 0
+        }
+      ],
+      2: [],
+      6: [],
+      7: []
+    },
+    btns: { 1: '查看订单', 2: '马上抢单' },
+    // 时间
+    item: null
+  }
+  watch = {}
+  methods = {
+    // 按钮点击
+    buttonChangeFun(id, item, index) {
+      switch (Number(id)) {
+        case 0:
+          // 联系
+          wx.makePhoneCall({
+            phoneNumber: item.demand.project.projectUser.mobile
+          })
+          // 统计
+          this.sensorOrderTel(item.statusKey, 1)
+          break
+        case 1:
+          // 确认抢单
+          // 统计
+          this.setSensorsData({
+            Category: '点击确认抢单按钮',
+            Action: '订单列表页',
+            Label: ''
+          })
+          wx.showModal({
+            title: '铁甲提示',
+            content: '是否确认抢单操作？',
+            success: res => {
+              if (res.confirm) {
+                console.log('用户点击确定')
+                // 用户点击确定
+                this.okOrderFun(item, index)
+              } else if (res.cancel) {
+                console.log('用户点击取消')
+              }
+            }
+          })
+          break
+        case 2:
+          // 确认设备进场
+          wx.showModal({
+            title: '铁甲提示',
+            content: '是否确认设备机械已到达工程所在地？',
+            success: res => {
+              if (res.confirm) {
+                console.log('用户点击确定', index)
+                // 用户点击确定
+                this.okDiveceEnter(item, index)
+              } else if (res.cancel) {
+                console.log('用户点击取消')
+              }
+            }
+          })
+          break
+      }
+    },
+    // 跳转
+    gotoLink(id) {
+      wepy.navigateTo({
+        url: `/pages/order-detail?id=${escape(id)}`
+      })
+    }
+  }
+
+  events = {}
+  onLoad() {}
+
+  // 确认设备
+  okOrderFun(item, index) {
+    wepy
+      .request({
+        url: `${this.host}app/order/confirmDevice`,
+        data: {
+          orderId: item.id,
+          wxOpenid: this.submitData.wxOpenid
+        }
+      })
+      .then(res => {
+        let data = res.data
+        if (data.ret === '0') {
+          wx.showToast({
+            title: '抢单提交成功，耐心等待工程方的确定~',
+            icon: 'none',
+            duration: 2000
+          })
+          this.$emit('upDataListFun', index)
+        } else {
+          wx.showToast({
+            title: data.msg,
+            icon: 'none',
+            duration: 2000
+          })
+        }
+      })
+  }
+
+  // 确认进厂
+  okDiveceEnter(item, index) {
+    wepy
+      .request({
+        url: `${this.host}app/order/enter`,
+        data: {
+          orderId: item.id,
+          wxOpenid: this.submitData.wxOpenid
+        }
+      })
+      .then(res => {
+        let data = res.data
+        if (data.ret === '0') {
+          wx.showToast({
+            title: '设备进厂，耐心等待工程方的确定~',
+            icon: 'none',
+            duration: 2000
+          })
+
+          this.$emit('upDataListFun', index)
+        } else {
+          wx.showToast({
+            title: data.msg,
+            icon: 'none',
+            duration: 2000
+          })
+        }
+      })
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.li {
+  background: #ffffff;
+  box-shadow: 0 6rpx 10rpx 0 rgba(0, 0, 0, 0.13);
+  border-radius: 4rpx;
+  margin-bottom: 20rpx;
+  .head {
+    height: 100rpx;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30rpx;
+    border-bottom: 1rpx solid rgba(220, 226, 238, 0.6);
+    .name {
+      font-size: 32rpx;
+      color: #2d2d33;
+      line-height: 44rpx;
+      font-weight: bold;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      max-width: 460rpx;
+    }
+    .status {
+      max-width: 258rpx;
+      line-height: 44rpx;
+      font-size: 28rpx;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      &:after {
+        content: '\5de6';
+        font-family: 'TieJia';
+        display: block;
+        font-size: 28rpx;
+        color: #bdc1c9;
+      }
+      &.status4 {
+        color: #ff5b3e;
+      }
+      &.status1 {
+        color: #ffae00;
+      }
+      &.status2 {
+        color: #ffae00;
+      }
+      &.status3 {
+        color: #ffae00;
+      }
+      &.status5 {
+        color: #7ed321;
+        align-items: center;
+        &:before {
+          content: '\5bf9';
+          font-family: 'TieJia';
+          color: #7ed321;
+          font-size: 40rpx;
+          margin-right: 12rpx;
+        }
+      }
+      &.status6,
+      &.status7 {
+        color: rgba(158, 164, 175, 0.6);
+      }
+    }
+  }
+  .h2 {
+    display: block;
+    padding: 26rpx 0 28rpx 30rpx;
+    font-size: 32rpx;
+    color: #2d2d33;
+  }
+  .info {
+    padding: 0 30rpx 32rpx 30rpx;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
+    text {
+      font-size: 28rpx;
+      color: #6a6a77;
+    }
+  }
+  .footer {
+    padding: 0 30rpx 36rpx 30rpx;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    text {
+      flex: 1;
+      height: 80rpx;
+      line-height: 80rpx;
+      text-align: center;
+      font-size: 32rpx;
+      border-radius: 4rpx;
+      box-sizing: border-box;
+      color: #3b6afb;
+      border: 1rpx solid #3b6afb;
+      border-radius: 80rpx;
+      &:first-child {
+        margin-right: 30rpx;
+      }
+    }
+  }
+}
+</style>

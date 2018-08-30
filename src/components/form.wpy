@@ -1,0 +1,706 @@
+<template>
+  <view class="view">
+    <block wx:for="{{list}}" wx:key="{{index}}">
+      <view class="li" wx:if="{{index !== 'quotaValue' || item.canFor }}">
+        <view class="left">
+          <text class="hint" wx:if="{{item.required}}">*</text>
+          <text class="text">{{item.title}}：</text>
+        </view>
+        <view class="right">
+            <!-- 品牌型号 or 城市 -->
+          <view class="checkbox" wx:if="{{item.type == 'popup'}}" @tap="goToLink({{index}})">
+            <text class="placeholder" wx:if="{{!item.value}}">{{item.placeholder}}</text>
+            <text class="content" wx:if="{{item.value}}">{{item.value}}</text>
+          </view>
+            <!-- 机型 -->
+          <view class="checkbox" wx:if="{{index == 'categoryName'}}">
+            <picker wx:if="{{!headerShow}}" mode="selector" bindchange="categoryFun" range="{{categoryArr}}" range-key="{{'name'}}">
+              <text class="placeholder" wx:if="{{!item.value}}">{{item.placeholder}}</text>
+              <text class="content" wx:if="{{item.value}}">{{item.value}}</text>
+            </picker>
+            <text wx:if="{{headerShow}}">{{item.value}}</text>
+          </view>
+            <!-- 指标 -->
+          <view class="checkbox" wx:if="{{index == 'quotaValue'}}">
+            <block wx:if="{{quotaArr.length > 0}}">
+              <picker mode="selector" wx:if="{{!headerShow}}" bindchange="quotaFun" range="{{quotaArr}}" range-key="{{'v'}}">
+                <text class="placeholder" wx:if="{{!item.value}}">{{item.placeholder}}</text>
+                <text class="content" wx:if="{{item.value}}">{{item.value}}</text>
+              </picker>
+            </block>
+            <text wx:if="{{headerShow}}">{{item.value}}</text>
+            <text wx:if="{{quotaArr.length <= 0}}" class="placeholder quota" @tap="quotaToast">{{item.placeholder}}</text>
+          </view>
+            <!-- 开始时间 -->
+          <view class="checkbox" wx:if="{{index == 'availableTime'}}">
+            <picker
+              mode="date"
+              bindchange="changeTimeFun"
+              data-type="availableTime"
+              start="{{currentTime}}"
+              end="{{finishTime}}"
+            > 
+              <text class="placeholder" wx:if="{{!item.value}}">{{item.placeholder}}</text>
+              <text class="content" wx:if="{{item.value}}">{{item.value}}</text>
+            </picker>
+          </view>
+          <!-- 出厂时间 -->
+          <view class="checkbox" wx:if="{{index == 'factoryTime'}}">
+            <picker
+              mode="date"
+              bindchange="changeTimeFun"
+              data-type="factoryTime"
+              start="1949-10-01"
+              value="{{currentTime}}"
+              end="{{currentTime}}"
+              fields="month"
+            > 
+              <text class="placeholder" wx:if="{{!item.value}}">{{item.placeholder}}</text>
+              <text class="content" wx:if="{{item.value}}">{{item.value}}</text>
+            </picker>
+          </view>
+
+          <view class="input" wx:if="{{item.type == 'input'}}">
+            <input bindinput="formInputFun" data-type="{{index}}" maxlength="10" placeholder-style="color: #9ea4af;" type="number" placeholder="{{item.placeholder}}" value="{{item.value}}"/>
+            <text wx:if="{{index == 'hours'}}">小时</text>
+          </view>
+          <view class="radio" wx:if="{{item.type == 'radio'}}">
+            <view class="{{item.value == 0 ? 'selected' : ''}} item" @tap="selectFun('0',{{index}})">
+              {{item.radioItems[0]}}
+            </view>
+            <view class="{{item.value == 1 ? 'selected' : ''}} item" @tap="selectFun('1',{{index}})">
+              {{item.radioItems[1]}}
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+    <!-- 非必填项 -->
+    <view class="no-required">
+      <view class="li">
+        <view class="left">
+          <text class="text">序列号：</text>
+        </view>
+        <view class="right">
+          <view class="input">
+            <input value="{{submitData.serialNo}}" type="tel" bindinput="formInputFun" maxlength="25" data-type="serialNo" placeholder-style="color: #9ea4af;" placeholder="请输入序列号"/>
+          </view>
+        </view>
+      </view>
+      <view class="li">
+        <view class="left">
+          <text class="text">云盒SN：</text>
+        </view>
+        <view class="right">
+          <view class="input">
+            <input value="{{submitData.cloudboxSn}}" type="text" bindinput="formInputFun" data-type="cloudboxSn" maxlength="25" placeholder-style="color: #9ea4af;" placeholder="绑定云盒成为VIP设备，享优先推荐"/>
+          </view>
+        </view>
+      </view>
+      <view class="li textarea">
+        <view class="left">
+          <text class="text">设备说明：</text>
+        </view>
+        <view class="right">
+          <textarea value="{{submitData.description}}" bindinput="formInputFun" data-type="description" maxlength="200" placeholder-style="color: #9ea4af;" placeholder="请输入这台设备的其他描述信息，比如斗容、保养状态等"/>
+        </view>
+      </view>
+    </view>
+
+    <!-- 按钮 -->
+    <view class="footer notap" wx:if="{{headerShow}}">
+      <text class="delete" @tap="editDevice(0)">删除设备</text>
+      <text class="save"  @tap="editDevice(1)">保存</text>
+    </view>
+    <view class="footer" wx:if="{{!headerShow}}">
+      <text class="save" @tap="submitFun">去上传图片</text>
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+import uitil from '../uitil.wxs'
+export default class Form extends wepy.component {
+  props = {
+    detail: {
+      twoWay: true
+    },
+    headerShow: {
+      twoWay: true
+    },
+    submitData: {
+      twoWay: true
+    },
+    scrollId: {
+      twoWay: true
+    }
+  }
+  wxs = {
+    wxs: uitil
+  }
+  data = {
+    // 机型列表
+    categoryArr: [],
+    // 指标
+    quotaArr: [],
+    // 出厂时间
+    factoryTime: '',
+    // 可用时间
+    availableTime: '',
+    list: {
+      // 机型
+      categoryName: {
+        // 必填
+        required: true,
+        title: '设备机型',
+        placeholder: '请选择设备机型',
+        value: '',
+        id: 'categoryId',
+        type: 'checkbox'
+      },
+      // 品牌
+      brandName: {
+        // 必填
+        required: true,
+        title: '品牌型号',
+        placeholder: '请选择品牌与型号',
+        value: '',
+        id: 'brandId',
+        type: 'popup',
+        // 型号
+        children: {
+          name: 'modelName',
+          id: 'modelId'
+        }
+      },
+      // 设备指标
+      quotaValue: {
+        // 必填
+        required: true,
+        title: '设备指标',
+        placeholder: '请选择设备指标',
+        value: '',
+        type: 'checkbox'
+      },
+      // 所在地区
+      cityCode: {
+        required: true,
+        title: '所在地区',
+        placeholder: '请选择设备所在地区',
+        value: '',
+        type: 'popup'
+      },
+      // 可用时间
+      availableTime: {
+        // 必填
+        required: true,
+        title: '可用时间',
+        placeholder: '请选择可用时间',
+        value: '',
+        id: 'availableTime',
+        type: 'checkbox'
+      },
+      // 小时数
+      hours: {
+        // 必填
+        required: true,
+        title: '小时数',
+        placeholder: '请输入设备小时数',
+        value: '',
+        type: 'input'
+      },
+      // 出厂时间
+      factoryTime: {
+        // 必填
+        required: true,
+        title: '出厂时间',
+        placeholder: '请选择出厂时间',
+        value: '',
+        type: 'checkbox'
+      },
+      // 是否带锤
+      hammerFlag: {
+        // 必填
+        required: true,
+        title: '是否带锤',
+        value: '0',
+        type: 'radio',
+        start: '0',
+        radioItems: ['否', '是']
+      },
+      // 司机情况
+      driverFlag: {
+        // 必填
+        required: true,
+        title: '司机情况',
+        value: '1',
+        type: 'radio',
+        start: '1',
+        radioItems: ['无司机', '有司机']
+      }
+    }
+  }
+  mixins = [mixin]
+
+  watch = {
+    detail() {
+      // 编辑
+      this.demandDetail()
+    }
+  }
+
+  onLoad() {
+    this.list.availableTime.value = this.currentTime
+    this.$apply()
+    // 获取机型缓存
+    wx.getStorage({
+      key: 'ZUCategoryList',
+      complete: res => {
+        if (res.data) {
+          this.categoryArr = JSON.parse(res.data)
+          this.$apply()
+        } else {
+          this.getCategoryList()
+        }
+      }
+    })
+  }
+
+  // 获取机型
+  getCategoryList() {
+    wepy
+      .request({
+        url: `${this.host}app/product/getCategoryList`
+      })
+      .then(res => {
+        if (res.data.ret === '0') {
+          this.categoryArr = res.data.data
+          this.$apply()
+          wx.setStorage({
+            key: 'ZUCategoryList',
+            data: JSON.stringify(res.data.data)
+          })
+        }
+      })
+  }
+
+  // 编辑数据渲染
+  demandDetail() {
+    for (const key in this.submitData) {
+      if (this.list[key]) {
+        if (key == 'availableTime') {
+          // 可用时间
+          this.list[key].value = this.getTimestamp(this.detail[key])
+        } else if (key == 'factoryTime') {
+          // 出厂时间
+          let year = this.detail[key].substring(0, 4)
+          let month = this.detail[key].substring(4, 6)
+          this.list[key].value = year + '-' + month
+        } else {
+          this.list[key].value = this.detail[key]
+          if (this.list[key].children) {
+            this.list[key].value +=
+              ' ' + this.detail[this.list[key].children.name]
+          }
+        }
+      }
+      if (key != 'wxOpenid') {
+        this.submitData[key] = this.detail[key]
+      }
+    }
+    // 城市
+    this.list.cityCode.value = this.detail.cityName
+    // 指标
+    this.list.quotaValue.value = this.detail.quotaName
+    this.getQuotaFun(this.submitData.categoryId)
+    this.$apply()
+  }
+
+  methods = {
+    // 点击指标 提示弹窗
+    quotaToast() {
+      if (this.quotaArr.length <= 0) {
+        wepy.showToast({
+          icon: 'none',
+          title: '请先选择设备机型',
+          duration: 1000
+        })
+      }
+    },
+    // 机型选择
+    categoryFun(e) {
+      // 编辑
+      if (this.headerShow && this.detail.reviewStatus >= 2) return
+      const index = e.detail.value
+      this.list.categoryName.value = this.categoryArr[index].name
+      this.list.quotaValue.value = ''
+
+      this.submitData.categoryName = this.categoryArr[index].name
+      this.submitData.categoryId = this.categoryArr[index].id
+
+      // 修改机型清空关联项
+      this.list.brandName.value = ''
+      this.list.quotaValue.value = ''
+
+      this.$apply()
+
+      // 请求指标数据
+      this.getQuotaFun(this.categoryArr[index].id)
+    },
+    // 指标选择
+    quotaFun(e) {
+      // 编辑
+      if (this.headerShow && this.detail.reviewStatus >= 2) return
+      const index = e.detail.value
+      this.list.quotaValue.value = this.quotaArr[index].v
+      this.submitData.quotaValue = this.quotaArr[index].k
+
+      this.$apply()
+    },
+    // 时间选择
+    changeTimeFun(e) {
+      const typeVal = e.target.dataset['type']
+      const val = e.detail.value
+
+      // 时间戳 精确到秒
+      let timer = Date.parse(new Date(val)) / 1000
+      this.list[typeVal].value = val
+      if (typeVal === 'factoryTime') {
+        this.submitData[typeVal] = val.split('-').join('')
+        this.list[typeVal].value = val.split('-').join('-')
+      } else {
+        this.submitData[typeVal] = timer
+      }
+      this.$apply()
+    },
+    // 输入
+    formInputFun(e) {
+      const typeVal = e.target.dataset['type']
+      const val = e.detail.value
+      if (this.list[typeVal]) {
+        this.list[typeVal].value = val
+      }
+      this.submitData[typeVal] = val
+      this.$apply()
+    },
+    // 单选
+    selectFun(n, type) {
+      this.list[type].value = n
+      this.submitData[type] = n
+      this.$apply()
+    },
+    // 打开二级页面
+    goToLink(type) {
+      switch (type) {
+        case 'brandName':
+          // 编辑
+          if (this.headerShow && this.detail.reviewStatus >= 2) return
+          if (this.submitData.categoryId) {
+            wepy.navigateTo({
+              url: `../pages/brand?id=${this.submitData.categoryId}`
+            })
+          } else {
+            wepy.showToast({
+              icon: 'none',
+              title: '请先选择设备机型',
+              duration: 1000
+            })
+          }
+
+          break
+        case 'cityCode':
+          wepy.navigateTo({
+            url: '../pages/chooseCity'
+          })
+          break
+      }
+    },
+    // 保存 下一步
+    submitFun() {
+      this.scrollId = 'head'
+      this.$apply()
+      // 判断提示
+      this.submitData.availableTime =
+        Date.parse(new Date(this.list.availableTime.value)) / 1000
+      for (const key in this.list) {
+        if (this.list[key].value.trim() === '') {
+          wepy.showToast({
+            icon: 'none',
+            title: this.list[key].placeholder,
+            duration: 1000
+          })
+          return
+        }
+      }
+
+      // 校验云盒提交
+      if (this.submitData.cloudboxSn.trim() !== '') {
+        wx.showLoading({
+          title: '正在提交...'
+        })
+        this.checkCloudbox()
+      } else {
+        // 删除数据
+        this.removeSubmitDate()
+        this.$parent.$parent.globalData.brandInfo = {}
+        wx.removeStorage({
+          key: 'ZUcityObj'
+        })
+        // 保存成功
+        this.$emit('chooseImageFun', 1)
+
+        // 返回顶部
+        this.scrollId = 'head'
+      }
+    },
+    // 编辑保存
+    editDevice(type) {
+      this.$emit('editDevice', type)
+    }
+  }
+
+  // 云盒校验
+  checkCloudbox(data) {
+    wepy
+      .request({
+        url: `${this.host}app/device/checkCloudboxSn`,
+        data: {
+          sn: this.submitData.cloudboxSn
+        }
+      })
+      .then(res => {
+        wx.hideLoading()
+        if (res.data.data == 'true') {
+          // 删除数据
+          this.removeSubmitDate()
+          // 保存成功
+          this.$emit('chooseImageFun', 1)
+        } else {
+          wepy.showToast({
+            icon: 'none',
+            title: '您的云盒SN填写有误~',
+            duration: 1000
+          })
+        }
+      })
+  }
+
+  // 删除提交数据
+  removeSubmitDate() {
+    for (const key in this.list) {
+      this.list[key].value = ''
+      if (this.list[key].type == 'radio') {
+        this.list[key].value = this.list[key].start
+      }
+    }
+    this.list.brandName.value = ''
+    this.list.cityCode.value = ''
+    this.$apply()
+  }
+
+  // 地区选择
+  addressChoose(name) {
+    this.list.cityCode.value = name
+    this.$apply()
+  }
+
+  // 品牌型号
+  brandChoose(name) {
+    this.list.brandName.value = name
+    this.$apply()
+  }
+
+  // 获取指标
+  getQuotaFun(id) {
+    wepy
+      .request({
+        url: `${this.host}app/meta/getCategoryQuota`,
+        data: {
+          categoryId: id
+        }
+      })
+      .then(res => {
+        if (res.data.ret === '0') {
+          this.quotaArr = res.data.data.quotaValues
+          console.log(this.quotaArr)
+          this.list.quotaValue.canFor = !!res.data.data
+          // key ==> res.data.data.quotaKey
+          this.$apply()
+        }
+      })
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.view {
+  .li {
+    display: flex;
+    flex-direction: row;
+    min-height: 108rpx;
+    align-items: center;
+    background-color: #fff;
+    padding-right: 40rpx;
+    box-sizing: border-box;
+    position: relative;
+    border-bottom: 1rpx solid rgba(220, 226, 238, 0.6);
+    &:last-child {
+      border: none;
+    }
+    .left {
+      width: 184rpx;
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
+      margin-right: 38rpx;
+      .text {
+        width: 144rpx;
+        font-size: 28rpx;
+        line-height: 40rpx;
+        color: #6a6a77;
+      }
+      .hint {
+        color: #ff4757;
+        font-size: 32rpx;
+        line-height: 40rpx;
+        margin-right: 10rpx;
+      }
+    }
+    .right {
+      flex-grow: 1;
+      .checkbox,
+      .input {
+        display: flex;
+        justify-content: space-between;
+        flex-direction: row;
+        align-items: center;
+      }
+      .input {
+        text {
+          display: flex;
+          line-height: 40rpx;
+          min-width: 70rpx;
+          font-size: 28rpx;
+          color: #6a6a77;
+        }
+      }
+      .checkbox {
+        min-height: 108rpx;
+        picker {
+          height: 108rpx;
+          width: 100%;
+          line-height: 108rpx;
+        }
+        &:after {
+          content: '\5DE6';
+          font-family: 'TieJia';
+          color: #bdc1c9;
+          font-size: 28rpx;
+          line-height: 40rpx;
+          display: block;
+        }
+      }
+      .radio {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        overflow: hidden;
+        flex-grow: 1;
+        .item {
+          width: 134rpx;
+          height: 60rpx;
+          line-height: 60rpx;
+          border: 1rpx solid rgba(106, 106, 119, 1);
+          border-radius: 60rpx;
+          text-align: center;
+          font-size: 28rpx;
+          color: #6a6a77;
+          box-sizing: border-box;
+          transition: background 0.4s linear;
+          &:last-child {
+            margin-left: 40rpx;
+          }
+          &.selected {
+            background: #3b6afb;
+            border: none;
+            color: #fff;
+          }
+        }
+      }
+      .placeholder {
+        color: #9ea4af;
+        font-size: 28rpx;
+        line-height: 40rpx;
+        &.quota {
+          display: block;
+          width: 100%;
+          height: 108rpx;
+          line-height: 108rpx;
+        }
+      }
+      .content,
+      input {
+        font-size: 28rpx;
+        color: #2d2d33;
+        width: 400rpx;
+      }
+    }
+  }
+  .no-required {
+    margin-top: 20rpx;
+    background-color: #fff;
+    .textarea {
+      flex-wrap: wrap;
+      padding: 0 40rpx 40rpx;
+      .left {
+        height: 74rpx;
+        width: 144rpx;
+      }
+      .right {
+        width: 670rpx;
+        height: 188rpx;
+        border: 1rpx solid #dce2ee;
+        box-sizing: border-box;
+        padding: 14rpx 10rpx;
+        textarea {
+          font-size: 28rpx;
+          color: #2d2d33;
+          width: 100%;
+          height: 160rpx;
+        }
+      }
+    }
+  }
+  .footer {
+    background: #f3f3f3;
+    padding: 50rpx 40rpx 220rpx;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    &.notap {
+      padding-bottom: 320rpx;
+    }
+    text {
+      flex: 1;
+      height: 98rpx;
+      line-height: 98rpx;
+      text-align: center;
+      font-size: 32rpx;
+      border-radius: 4rpx;
+      box-sizing: border-box;
+    }
+    .save {
+      color: #fff;
+      background: #3b6afb;
+    }
+    .delete {
+      color: #ff5b3e;
+      border: 1rpx solid #ff5b3e;
+      margin-right: 30rpx;
+    }
+  }
+}
+</style>

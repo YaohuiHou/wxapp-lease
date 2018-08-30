@@ -1,0 +1,429 @@
+<template>
+  <view class="detail">
+    <view class="swiper">
+      <view class="page">
+        {{current}}/{{detail.imageList.length ? detail.imageList.length : 0 }}
+      </view>
+      <!-- 编码 -->
+      <view class="code">{{detail.deviceIdDesc}}</view>
+      <swiper bindchange="current" circular autoplay interval="2000" duration="800">
+        <block wx:for="{{detail.imageList}}" wx:key="{{index}}">
+          <swiper-item>
+            <image @tap="showImgList({{item.url}})" lazy-load mode="aspectFill" src="{{item.url}}" class="slide-image"/>
+          </swiper-item>
+        </block>
+      </swiper>
+    </view>
+    <!-- 头 -->
+    <view class="header">
+      <text class="name">{{detail.brandName}} {{detail.modelName}} {{detail.categoryName}}</text>
+      <text class="city">{{detail.provinceName}}-{{detail.cityName}}</text>
+      <view class="info">
+        <view class="bottom">
+          <image wx:if="{{detail.authFlag == 1}}" mode="aspectFit" src="../images/vip.png"></image>
+          <text wx:if="{{detail.driverFlag == 1}}">带司机</text>
+          <text wx:if="{{detail.hammerFlag == 1}}">带锤</text>
+        </view>
+        <view class="type">
+          <text class="text{{detail.reviewStatus}}" wx:if="{{detail.reviewStatus<2}}">{{statusText[detail.reviewStatus]}}</text>
+          <text wx:if="{{detail.reviewStatus == 2}}" class="texts{{detail.status}}">{{deviceType[detail.status]}}</text>
+        </view>
+      </view>
+    </view>
+    <!-- 详情 -->
+    <view class="ul">
+      <view class="li">
+        <text class="em">出厂时间：</text>
+        <text class="span">{{wxs.addTextTime(detail.factoryTime)}}</text>
+      </view>
+      <view class="li">
+        <text class="em">小时数：</text>
+        <text class="span">{{detail.hours}}小时</text>
+      </view>
+      <view class="li">
+        <text class="em">可用时间：</text>
+        <text class="span">{{wxs.formatTime(detail.availableTime)}}</text>
+      </view>
+      <view class="li" wx:if="{{detail.serialNo}}">
+        <text class="em">序列号：</text>
+        <text class="span">{{detail.serialNo}}</text>
+      </view>
+      <view class="li" wx:if="{{detail.cloudboxSn}}">
+        <text class="em">云盒SN：</text>
+        <text class="span">{{detail.cloudboxSn}}</text>
+      </view>
+      <view class="li">
+        <text class="em">{{detail.quotaKey}}：</text>
+        <text class="span">{{detail.quotaName}}</text>
+      </view>
+      <view class="li" wx:if="{{detail.driverFlag == 1}}">
+        <text class="em">司机情况：</text>
+        <text class="span">带司机</text>
+      </view>
+      <view class="li" wx:if="{{detail.authFlag == 1}}">
+        <text class="em">VIP：</text>
+        <text class="span">已认证</text>
+      </view>
+      <view class="li" wx:if="{{detail.description}}">
+        <text class="em">设备说明：</text>
+        <text class="span">{{detail.description}}</text>
+      </view>
+    </view>
+
+    <view class="footer" wx:if="{{footerChange}}">
+      <button open-type="share" plain class="share">分享</button>
+      <text class="editor {{(detail.reviewStatus <= 2 && detail.status != 2) ? '' : 'disable'}}" @tap="gotoLink">编辑设备</text>
+    </view>
+    <view class="footer" wx:if="{{!footerChange}}">
+      <text class="more" @tap="gotoIndex">查看更多</text>
+      <text class="editor" @tap="gotoApp">邀请抢单</text>
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+import uitil from '../uitil.wxs'
+export default class Index extends wepy.page {
+  config = {
+    navigationBarTitleText: '设备详情'
+  }
+  wxs = {
+    wxs: uitil
+  }
+
+  data = {
+    // 设备id
+    deviceId: '',
+    // 图片集合
+    imageList: [],
+    detail: {},
+    current: 1,
+    // 状态
+    // statusText: ['审核中...', '可抢单', '抢单中...', '未过审', '已抢单'],
+    statusText: ['审核中...', '审核未通过', '审核通过'],
+    deviceType: ['可抢单', '抢单中', '已抢单'],
+    // 吸低按钮替换
+    footerChange: true,
+    text: ''
+  }
+  mixins = [mixin]
+  onLoad(option) {
+    // 场景值 分享进入
+    if (option.type == 'share') {
+      this.footerChange = false
+      this.$apply()
+    }
+    this.text = this.$parent.globalData.text
+    if (option.id) {
+      this.deviceId = unescape(option.id)
+      this.$apply()
+      this.getDeviceDetail()
+    }
+  }
+  onShow() {
+    this.getDeviceDetail()
+    // 统计
+    this.autoTrackPageShow('设备详情页')
+    this.setSensorsData({
+      Category: '点击底部菜单',
+      Action: '点击发设备按钮',
+      Label: ''
+    })
+  }
+
+  methods = {
+    gotoLink() {
+      if (this.detail.reviewStatus <= 2 && this.detail.status != 2) {
+        wepy.navigateTo({
+          url: `/pages/demand-edit?id=${escape(this.deviceId)}`
+        })
+      }
+    },
+    // 查看详情图
+    showImgList(img) {
+      wepy.previewImage({
+        current: img, // 当前显示图片的http链接
+        urls: this.imageList // 需要预览的图片http链接列表
+      })
+    },
+    current(e) {
+      this.current = e.detail.current + 1
+    },
+    // 返回首页
+    gotoIndex() {
+      wepy.switchTab({
+        url: `/pages/index`
+      })
+    },
+    // 打开工程APP
+    gotoApp() {
+      wx.navigateToMiniProgram({
+        appId: 'wxab3231d4ee5a1458',
+        path: `pages/index?deviceId=${escape(this.deviceId)}`,
+        extraData: {
+          deviceId: escape(this.deviceId)
+        },
+        envVersion: 'develop',
+        success(res) {
+          // 打开成功
+        }
+      })
+    }
+  }
+
+  // 获取详情
+  getDeviceDetail() {
+    wepy
+      .request({
+        url: `${this.host}app/device/getDevice`,
+        data: {
+          id: this.deviceId
+        }
+      })
+      .then(res => {
+        let data = res.data
+        if (data.ret === '0') {
+          this.detail = res.data.data
+          this.detail.imageList.forEach(element => {
+            this.imageList[element.type - 1] = element.url
+          })
+          this.$apply()
+        }
+      })
+  }
+
+  // 分享
+  onShareAppMessage(res) {
+    // 分享
+    if (res.from === 'button') {
+    }
+    return {
+      title: `出租 · ${this.detail.brandName} ${this.detail.modelName} ${
+        this.detail.categoryName
+      }`,
+      path: `/pages/device-detail?id=${escape(this.deviceId)}&type=share`,
+      success: async res => {},
+      fail: res => {
+        // 转发失败
+      }
+    }
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.detail {
+  background: #fff;
+  .swiper {
+    width: 100%;
+    min-height: 420rpx;
+    overflow: hidden;
+    position: relative;
+    swiper {
+      width: 100%;
+      min-height: 500rpx;
+      .slide-image {
+        width: 100%;
+        height: 100%;
+      }
+    }
+    .code,
+    .page {
+      position: absolute;
+      bottom: 40rpx;
+      height: 40rpx;
+      border-radius: 40rpx;
+      background-color: rgba(0, 0, 0, 0.7);
+      line-height: 40rpx;
+      text-align: center;
+      font-size: 18rpx;
+      color: #ffffff;
+      z-index: 10;
+    }
+    .code {
+      right: 40rpx;
+      padding: 0 20rpx;
+    }
+    .page {
+      width: 80rpx;
+      left: 40rpx;
+    }
+    swiper-item {
+      width: 100%;
+      height: 500rpx;
+      image {
+        width: 100%;
+        height: 100%;
+      }
+    }
+  }
+  .header {
+    display: flex;
+    flex-direction: column;
+    padding: 24rpx 40rpx 32rpx;
+    border-bottom: 1rpx solid #dce2ee;
+    .name {
+      font-size: 40rpx;
+      color: #2d2d33;
+      line-height: 60rpx;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      margin-bottom: 16rpx;
+      font-weight: bold;
+    }
+    .city {
+      font-size: 24rpx;
+      color: #6a6a77;
+      line-height: 32rpx;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin-bottom: 22rpx;
+      &:before {
+        content: '\5B9A';
+        font-family: 'TieJia';
+        display: block;
+        margin-right: 10rpx;
+        font-size: 20rpx;
+        color: #6a6a77;
+      }
+    }
+    .info {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      height: 42rpx;
+    }
+    .bottom {
+      display: flex;
+      flex-direction: row;
+      margin-bottom: 4rpx;
+      image {
+        width: 92rpx;
+        height: 34rpx;
+        margin-right: 10rpx;
+      }
+      text {
+        display: block;
+        line-height: 34rpx;
+        padding: 0 12rpx;
+        font-size: 20rpx;
+        color: #6a6a77;
+        background: #f5f8fa;
+        border-radius: 4rpx;
+      }
+    }
+    .type {
+      text {
+        height: 42rpx;
+        font-size: 32rpx;
+        text-align: center;
+        line-height: 42rpx;
+        &.text0 {
+          color: #ffae00;
+        }
+        &.text1 {
+          color: #c5c8cf;
+        }
+        &.text2 {
+          color: #7ed321;
+        }
+        &.texts2 {
+          color: #ffae00;
+        }
+        &.texts1 {
+          color: #ff5b3e;
+        }
+        &.texts0 {
+          color: #7ed321;
+        }
+      }
+    }
+  }
+  .ul {
+    padding: 30rpx 40rpx 130rpx;
+    .li {
+      display: flex;
+      flex-direction: row;
+      margin-bottom: 22rpx;
+      &:last-child {
+        margin: 0;
+      }
+      text {
+        line-height: 40rpx;
+        font-size: 28rpx;
+      }
+      .em {
+        flex-shrink: 0;
+        margin-right: 16rpx;
+        color: #9ea4af;
+        display: block;
+        width: 142rpx;
+        text-align: justify;
+        text-justify: kashida;
+      }
+      .span {
+        flex-grow: 1;
+        color: #4a4a53;
+      }
+    }
+  }
+  .footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 98rpx;
+    display: flex;
+    flex-direction: row;
+    background-color: #fff;
+    box-shadow: 0 -2rpx 8rpx 0 rgba(0, 0, 0, 0.07);
+    .share,
+    .more {
+      width: 270rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-size: 24rpx;
+      color: #6a6a77;
+      text-align: center;
+      line-height: 24rpx;
+      border: none;
+      outline: none;
+      &:before {
+        content: '\4eab';
+        font-family: 'TieJia';
+        font-size: 40rpx;
+        color: #6a6a77;
+        display: block;
+        margin-bottom: 6rpx;
+        line-height: 40rpx;
+      }
+    }
+    .more {
+      font-weight: bold;
+      &:before {
+        display: none;
+      }
+    }
+    .editor {
+      flex-grow: 1;
+      display: block;
+      height: 98rpx;
+      line-height: 98rpx;
+      text-align: center;
+      font-size: 32rpx;
+      color: #ffffff;
+      background-color: #3b6afb;
+      &.disable {
+        opacity: 0.5;
+      }
+    }
+  }
+}
+</style>

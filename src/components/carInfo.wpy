@@ -1,0 +1,99 @@
+<template>
+  <view class="li">
+      <view class="left-info">
+        <text class="info">{{item.deviceNum}}台{{item.quotaName}}{{item.categoryName}}</text>
+        <!-- <text class="status status{{item.status}}">{{item.statusDesc}}</text> -->
+      </view>
+      <view class="right-info">
+    <wxs src="../uitil.wxs" module="uitil"/>
+        <text>{{item.quantity}}{{type[item.priceType]}}</text>
+        <text>{{wxs.formatTime(item.rentTime)}} 进场</text>
+      </view>
+    </view>
+</template>
+
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+import uitil from '../uitil.wxs'
+export default class Index extends wepy.component {
+  props = {
+    item: {}
+  }
+  data = {
+    type: {
+      1: '台班',
+      2: '天',
+      3: '月',
+      4: '土石方',
+      5: '车',
+      6: '立方米',
+      7: '平方米',
+      8: '米'
+    }
+  }
+  mixins = [mixin]
+
+  wxs = {
+    wxs: uitil
+  }
+
+  onLoad() {}
+
+  methods = {}
+}
+</script>
+
+<style lang="less" scoped>
+.li {
+  height: 78rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-direction: row;
+  .left-info {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    .info {
+      font-size: 28rpx;
+      color: #4a4a53;
+      font-weight: bold;
+      max-width: 320rpx;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .status {
+      font-size: 20rpx;
+      line-height: 34rpx;
+      color: #ffffff;
+      padding: 0 8rpx;
+      border-radius: 4rpx;
+      margin-left: 8rpx;
+      &.status0 {
+        background-color: #7ed321;
+      }
+      &.status1 {
+        background-color: #ffae00;
+      }
+      &.status2 {
+        background-color: #ff5b3e;
+      }
+      &.status3 {
+        background-color: rgba(158, 164, 175, 0.6);
+      }
+    }
+  }
+  .right-info {
+    text {
+      font-size: 28rpx;
+      color: #6a6a77;
+      &:first-child {
+        margin-right: 12rpx;
+      }
+    }
+  }
+}
+</style>

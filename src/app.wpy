@@ -1,0 +1,116 @@
+<style lang="less">
+@font-face {
+  font-family: 'TieJia'; /* project id 698823 */
+  src: url('//at.alicdn.com/t/font_698823_86tev9xqbyv.eot');
+  src: url('//at.alicdn.com/t/font_698823_86tev9xqbyv.eot?#iefix')
+      format('embedded-opentype'),
+    url('//at.alicdn.com/t/font_698823_86tev9xqbyv.woff') format('woff'),
+    url('//at.alicdn.com/t/font_698823_86tev9xqbyv.ttf') format('truetype'),
+    url('//at.alicdn.com/t/font_698823_86tev9xqbyv.svg#iconfont') format('svg');
+}
+</style>
+
+<script>
+import wepy from 'wepy'
+import sensors from './utils/sensorsdata.js'
+import 'wepy-async-function'
+
+export default class extends wepy.app {
+  config = {
+    pages: [
+      // 'pages/order-detail',
+      'pages/index',
+      'pages/demand',
+      'pages/demand-edit',
+      'pages/personal',
+      'pages/chooseCity',
+      'pages/rob-job',
+      'pages/project-detail',
+      'pages/my-devices',
+      'pages/device-detail',
+      'pages/complete',
+      'pages/my-order',
+      'pages/order-detail',
+      'pages/verificationCode',
+      'pages/register',
+      'pages/brand'
+    ],
+    window: {
+      backgroundTextStyle: 'dark',
+      navigationBarBackgroundColor: '#fff',
+      navigationBarTitleText: '铁甲找活',
+      navigationBarTextStyle: 'black',
+      backgroundColor: '#fff',
+      backgroundColorTop: '#fff',
+      backgroundColorBottom: '#dce2ee'
+    },
+    tabBar: {
+      color: '#6A6A77',
+      selectedColor: '#3B6AFB',
+      backgroundColor: '#fff',
+      borderStyle: 'black',
+      list: [
+        {
+          pagePath: 'pages/index',
+          text: '找活',
+          iconPath: './images/list.png',
+          selectedIconPath: './images/active-list.png'
+        },
+        {
+          pagePath: 'pages/demand',
+          text: '发布',
+          iconPath: './images/add.png',
+          selectedIconPath: './images/active-add.png'
+        },
+        {
+          pagePath: 'pages/personal',
+          text: '我的',
+          iconPath: './images/me.png',
+          selectedIconPath: './images/active-me.png'
+        }
+      ]
+    }
+  }
+
+  globalData = {
+    // 判断登录否
+    ISLogin: false,
+    wxOpenId: null,
+    sessionKey: null,
+    userInfo: null,
+    brandInfo: {},
+    shareBtn: false
+  }
+  constructor() {
+    super()
+    this.use('requestfix')
+    this.use('promisify')
+  }
+  onLaunch(option) {
+    this.sceneFun(option)
+    // this.authorize()
+    // this.checklogin()
+
+    // 清除缓存
+    // 品牌信息
+    wx.removeStorage({
+      key: 'ZUCategoryList'
+    })
+
+    // 公共信息
+    sensors.register({
+      app_name: '租赁（设备方）',
+      app_version: 'v1.0.0'
+    })
+  }
+
+  // 场景值
+  sceneFun(option) {
+    // 转发打开
+    this.globalData.text = option.scene
+    if (option.scene == 1007 || option.scene == 1008) {
+      this.globalData.shareBtn = true
+    }
+  }
+}
+</script>

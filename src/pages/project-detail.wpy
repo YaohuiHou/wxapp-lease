@@ -1,0 +1,280 @@
+<template>
+  <view class="home">
+    <view class="header">
+      <view class="h1">{{detail.name}}</view>
+      <view class="city">{{detail.provinceName}} {{detail.cityName}}</view>
+      <view class="info">
+        <text>编码：{{detail.projectIdStr}}</text>
+        <text>单位：{{detail.company}}</text>
+      </view>
+      <view class="require">
+        <text wx:if="{{detail.fuelSupplyFlag == 1}}">包油</text>
+        <text>{{detail.typeDesc}}</text>
+      </view>
+    </view>
+    <view class="ul">
+      <repeat for="{{detail.demandList}}" key="index" index="index" item="item">
+        <view class="li">
+          <jobItem :item="item" :projectId="projectId"></jobItem>
+        </view>
+      </repeat>
+    </view>
+  <!-- 登录 -->
+    <view class="gotoLogin" wx:if="{{!ISLogin}}">
+        <button open-type="getUserInfo" class="login" wx:if="{{getPhone}}" bindgetuserinfo="onGotUserInfo"></button>
+        <button open-type="getPhoneNumber" bindgetphonenumber="getPhoneNumber" class="getPhone" wx:if="{{!getPhone}}" ></button>
+      </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixins from '../mixins'
+import jobItem from '@/components/job'
+
+export default class index extends wepy.page {
+  config = {
+    navigationBarTitleText: '工程详情'
+  }
+  components = {
+    jobItem
+  }
+
+  mixins = [mixins]
+
+  data = {
+    // 是否登录
+    loginShow: true,
+    getPhone: true,
+    // 提交信息
+    userInfo: {
+      encryptedData: '',
+      iv: '',
+      sessionKey: '',
+      cityCode: '',
+      company: '',
+      mobile: '',
+      realName: '',
+      wxName: '',
+      wxPortrait: '',
+      wxOpenid: ''
+    },
+    statusText: ['已抢单', '抢单中...', '未抢单', '已结束'],
+    btns: { 1: '查看订单', 2: '马上抢单' },
+    // 工程详情
+    detail: {},
+    // 工程类型
+    type: [],
+    // 工程类型
+    projectType: '',
+    projectId: ''
+  }
+  watch = {}
+  methods = {
+    // 获取用户数据
+    onGotUserInfo: e => {
+      // 保存个人信息
+      this.userInfo.wxName = e.detail.userInfo.nickName
+      this.userInfo.wxPortrait = e.detail.userInfo.avatarUrl
+      wx.setStorage({
+        key: 'userInfoObj',
+        data: JSON.stringify(this.userInfo),
+        success: res => {
+          this.getPhone = false
+          this.$apply()
+          // 调起登录
+          // wepy.navigateTo({
+          //   url: `/pages/register`
+          // })
+        }
+      })
+    },
+    // 获取手机号
+    getPhoneNumber(e) {
+      if (e.detail.encryptedData) {
+        this.userInfo.encryptedData = e.detail.encryptedData
+        this.userInfo.iv = e.detail.iv
+        this.userInfo.sessionKey = this.$parent.globalData.sessionKey
+        this.userInfo.wxOpenid = this.$parent.globalData.wxOpenId
+        this.$apply()
+        // 提交
+        this.submitMyInfo(this.userInfo)
+      } else {
+        // 调起登录
+        wepy.navigateTo({
+          url: `/pages/register`
+        })
+      }
+    }
+  }
+
+  onShow() {
+    wx.getStorage({
+      key: 'ZUProjectType',
+      complete: res => {
+        if (res.data) {
+          this.type = JSON.parse(res.data)
+        }
+        if (this.projectId) {
+          this.getProjectDetail(this.projectId)
+        }
+      }
+    })
+
+    // 判断用户登录
+    if (this.$parent.globalData.ISLogin) {
+      this.loginShow = false
+      this.ISLogin = true
+    } else {
+      this.loginShow = true
+    }
+    // 统计
+    this.autoTrackPageShow('工程详情页')
+  }
+  onLoad(option) {
+    wx.showLoading({
+      title: '玩命加载中...'
+    })
+    this.projectId = unescape(option.id)
+    this.$apply()
+  }
+
+  // 工程详情
+  getProjectDetail(id) {
+    wepy
+      .request({
+        url: `${this.host}app/project/getProject`,
+        data: {
+          projectId: id,
+          wxOpenid: this.$parent.globalData.wxOpenId
+        }
+      })
+      .then(res => {
+        wx.hideLoading()
+        if (res.data.ret === '0') {
+          this.detail = res.data.data
+          this.$apply()
+        }
+      })
+  }
+
+  // 分享
+  onShareAppMessage(res) {
+    // 分享
+    if (res.from === 'button') {
+    }
+    return {
+      title: '老铁，这里有个好活快来看看！',
+      path: `/pages/index?projectId=${escape(this.projectId)}`,
+      success: async res => {},
+      fail: res => {
+        // 转发失败
+      }
+    }
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.gotoLogin,
+.login,
+.getPhone {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  border: none;
+  outline: none;
+  opacity: 0;
+}
+.login {
+  z-index: 10;
+  background-color: green;
+}
+.getPhone {
+  z-index: 9;
+  background-color: red;
+  opacity: 0.7;
+}
+.home {
+  background: #f3f3f3;
+  .header {
+    background-color: #fff;
+    margin-bottom: 20rpx;
+    padding: 30rpx 40rpx 40rpx 40rpx;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    .h1 {
+      font-size: 44rpx;
+      color: #2d2d33;
+      line-height: 60rpx;
+      font-weight: bold;
+      margin-bottom: 14rpx;
+    }
+    .city {
+      font-size: 24rpx;
+      color: #6a6a77;
+      line-height: 32rpx;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      &:before {
+        content: '\5B9A';
+        font-family: 'TieJia';
+        display: block;
+        margin-right: 10rpx;
+        font-size: 20rpx;
+        color: #6a6a77;
+      }
+    }
+    .info {
+      padding: 30rpx 0;
+      height: 78rpx;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text {
+        font-size: 24rpx;
+        color: #6a6a77;
+        line-height: 32rpx;
+      }
+    }
+    .require {
+      display: flex;
+      flex-direction: row;
+      text {
+        margin-right: 16rpx;
+        font-size: 20rpx;
+        color: #6a6a77;
+        line-height: 44rpx;
+        padding: 0 14rpx;
+        background: #f5f8fa;
+        border-radius: 4rpx;
+      }
+    }
+  }
+  .ul {
+    margin-top: 20rpx;
+    background-color: #fff;
+    .li {
+      position: relative;
+      &:before {
+        content: '';
+        height: 1px;
+        width: 100%;
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        background-color: rgba(220, 226, 238, 0.6);
+        transform: scaleY(0.5);
+      }
+      &:last-child:before {
+        display: none;
+      }
+    }
+  }
+}
+</style>

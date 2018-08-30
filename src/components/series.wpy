@@ -1,0 +1,175 @@
+
+<style lang="less" scoped>
+.show {
+  animation: rightAndLeft ease-in 0.2s;
+  animation-fill-mode: forwards;
+}
+.hide {
+  animation: leftAndRight ease-in 0.2s;
+  animation-fill-mode: forwards;
+}
+.mark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+.container {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 100%;
+  z-index: 9999;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  .content {
+    width: 510rpx;
+    height: 100%;
+    position: relative;
+    z-index: 10;
+    background-color: #ffffff;
+    box-shadow: -8rpx 6rpx 11rpx 0 rgba(0, 0, 0, 0.07);
+    .list {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      box-sizing: content-box;
+      .text {
+        text {
+          display: block;
+          padding: 32rpx 0 32rpx 30rpx;
+          font-size: 28rpx;
+          color: #4a4a53;
+          letter-spacing: 0;
+          border-bottom: 1rpx solid rgba(220, 226, 238, 0.6);
+        }
+        .other {
+          background: #efeff4;
+        }
+      }
+    }
+  }
+}
+@keyframes rightAndLeft {
+  0% {
+    right: -100%;
+  }
+  100% {
+    right: 0%;
+  }
+}
+@keyframes leftAndRight {
+  0% {
+    right: 0;
+  }
+  100% {
+    right: -100%;
+  }
+}
+</style>
+<template>
+  <view class="container {{sidebarInfo.show ? 'show' : 'hide'}}">
+    <!-- <view class="left"><text>{{sidebarInfo.show}}</text></view> -->
+    <scroll-view class="content" scroll-y bindscrolltolower="loadDeviceList" bindscroll="scrollScreen" enable-back-to-top="true">
+      <view class="list">
+        <block wx:for="{{seriesData}}" wx:key="{{index}}">
+            <view class="text">
+              <text @tap="chooseSeria({{item}})">{{item.name}}</text>
+              <view class="other" wx:if="{{modes[item.id]}}">
+                <block wx:for="{{modes[item.id]}}" wx:key="{{index}}">
+                  <text @tap="chooseModel({{item}})">{{item.name}}</text>
+                </block>
+              </view>
+            </view>
+        </block>
+      </view>
+    </scroll-view>
+    <view class="mark" @tap="hide"></view>
+  </view>
+</template>
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+
+export default class Sidebar extends wepy.component {
+  props = {
+    sidebarInfo: {},
+    categoryId: {
+      twoWay: true
+    },
+    seriesData: {
+      twoWay: true
+    },
+    brandItem: {
+      twoWay: true
+    }
+  }
+  mixins = [mixin]
+  components = {}
+  data = {
+    modes: {}
+  }
+  onLoad() {}
+  methods = {
+    hide(item) {
+      this.$emit('hide', null)
+    },
+    // 选择系列
+    chooseSeria(item) {
+      if (!this.modes[item.id]) {
+        wx.showLoading({
+          title: '加载中'
+        })
+        this.getModelList(item.id)
+        this.$parent.$parent.globalData.brandInfo[2] = item
+      }
+    },
+    // 选择型号
+    chooseModel(item) {
+      this.$parent.$parent.globalData.brandInfo[0] = this.brandItem
+      this.$parent.$parent.globalData.brandInfo[1] = item
+      this.$apply()
+      // wx.setStorage({
+      //   key: 'cityObj',
+      //   data: JSON.stringify(this.brandInfo),
+      //   success: res=>{
+
+      //   }
+      // })
+      // 返回
+      wx.navigateBack({
+        delta: 1
+      })
+    }
+  }
+
+  // 获取型号列表
+  getModelList(id) {
+    wepy
+      .request({
+        url: `${this.host}app/product/getModelList`,
+        data: {
+          serialId: id
+        }
+      })
+      .then(res => {
+        wx.hideLoading()
+        if (res.data.ret == '0') {
+          this.modes[id] = res.data.data
+          this.$apply()
+        }
+      })
+  }
+}
+</script>

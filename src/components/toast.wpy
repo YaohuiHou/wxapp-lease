@@ -1,0 +1,391 @@
+<template>
+  <view style="display:{{toastShowHidden}}" class="view">
+    <view class="toast">
+      <view class="header">
+        <text>{{toastContent.toastHeader}}</text>
+        <view class="close" @tap="toastMask"></view>
+      </view>
+      <text class="content">{{toastContent.toastContent}}</text>
+      <view class="{{error ? 'error tel' : 'tel'}}">
+        <text wx:if="{{error}}">请正确输入手机号</text>
+        <input type="number" value="{{telPhone}}" placeholder="请输入正确的手机号码" bindinput="telInputFun" maxlength="11">
+        <view class="empty" bindtap="removeTel"></view>
+      </view>
+      <view class="verify" wx:if="{{verifyCode}}">
+        <text wx:if="{{verifyError}}">{{verifyMsg}}</text>
+        <input type="text" placeholder="手机验证码" maxlength="11">
+        <view class="btn">获取验证码</view>
+      </view>
+      <button plain class="{{disabled ? 'disabled' : ''}}" disabled="{{disabled}}" @tap="submit">{{toastContent.toastButton}}</button>
+    </view>
+    <view class="mask" @tap="toastMask"></view>
+  </view>
+</template>
+
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+export default class Index extends wepy.component {
+  props = {
+    toastShow: {
+      type: Boolean,
+      twoWay: true
+    },
+    toastContent: Object,
+    brandeqId: {
+      default: '',
+      twoWay: true
+    },
+    EQData: {
+      twoWay: false
+    }
+  }
+  data = {
+    toastShowHidden: 'none',
+    // 提示文案
+    toastHeader: '我要买设备',
+    // 按钮文案
+    toastButton: '免费通话',
+    // 禁止提交
+    disabled: true,
+    // 错误提示
+    error: false,
+    // 电话
+    telPhone: '',
+    // 验证码输入
+    verifyCode: false,
+    // 验证码错误
+    verifyError: false,
+    // 验证码提示文案
+    verifyMsg: '',
+    // 提交数据
+    submitData: {
+      customerNumber: '', // 用户号码
+      uniqueSymbol: 'wx_tiebaobei_app', // 唯一标识（传一个你自己定义的唯一的标识就行, 参考我们自己的m站传的是sc_uniqueSymbol）
+      eqId: 0, // 设备id:
+      channel: 8, // 渠道 传8
+      transferNumber: '',
+      pageFromType: '',
+      hotlineShare: '',
+      currentUserWorkPhone: '',
+      distinctId: '', // 设备标识
+      code: '' // 有验证码，传验证码
+    }
+  }
+
+  watch = {
+    toastShow(n, o) {
+      if (!n) {
+        this.toastShowHidden = 'block'
+      } else {
+        this.toastShowHidden = 'none'
+      }
+      this.$apply()
+    }
+  }
+  mixins = [mixin]
+
+  onShow() {
+    wx.getSystemInfo({
+      success: res => {
+        let distinctId =
+          res.model +
+          res.pixelRatio +
+          res.windowWidth +
+          res.windowHeight +
+          res.language +
+          res.version +
+          res.platform
+        this.submitData.distinctId = distinctId
+        this.$apply()
+      }
+    })
+  }
+
+  methods = {
+    // 电话输入
+    telInputFun(e) {
+      this.telPhone = e.detail.value
+      if (this.telPhone.length < 11) {
+        this.disabled = true
+      } else {
+        this.disabled = false
+      }
+    },
+    // 清除数据
+    removeTel() {
+      this.telPhone = ''
+      this.error = false
+      this.disabled = true
+    },
+    // 关闭
+    toastMask() {
+      this.toastShow = true
+      this.toastShowHidden = 'none'
+      this.$apply()
+    },
+    // 提交手机号码
+    submit() {
+      if (
+        /^1(([38]\d)|(4[57])|(5[012356789])|(6[6])|(7[0678])|(9[89]))\d{8}$/.test(
+          this.telPhone
+        )
+      ) {
+        this.error = false
+        // 提交信息
+        this.submitData.distinctId = this.distinctId
+        this.submitData.customerNumber = this.telPhone
+        this.submitData.eqId = this.brandeqId
+        this.submitData.pageFromType = this.toastContent.pageFromType
+        if (this.submitDisable) return
+        this.submitDisable = true
+        // 提交ajax
+        /*
+        0 成功
+        1104 获取验证码失败，请在24小时后再获取
+        1105 验证失败，请在24小时后再发起通话
+        1106 请输入验证码
+        1107 验证码错误，请重新获取验证码
+        */
+        let me = this.EQData
+        me.buyer_mobile = this.telPhone
+        this.setSensorsData(this.toastContent.scType, me)
+        return
+
+        wepy
+          .request({
+            url: `${this.host}callCenter`,
+            data: this.submitData
+          })
+          .then(res => {
+            this.submitDisable = false
+            switch (res.data.ret) {
+              case '0':
+                this.toastShow = true
+                wx.showToast({
+                  title: '提交成功！',
+                  icon: 'success',
+                  duration: 2000
+                })
+                let me = this.EQData
+                me.buyer_mobile = this.telPhone
+                this.setSensorsData(this.toastContent.scType, me)
+                break
+              case '1104':
+              case '1105':
+                this.toastShow = true
+                wx.showToast({
+                  title: res.data.msg,
+                  icon: 'none',
+                  duration: 2000
+                })
+                break
+              case '1106':
+                this.verifyCode = true
+                break
+              case '1107':
+                this.verifyError = true
+                this.verifyMsg = '手机验证码错误'
+                break
+            }
+            this.$apply()
+          })
+          .catch(err => {
+            this.submitDisable = false
+            this.$apply()
+          })
+      } else {
+        // 错误提示 + 震动
+        this.error = true
+        wepy.vibrateLong()
+      }
+    }
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.view {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: none;
+  .mask {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+  .toast {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 594rpx;
+    transform: translate3d(-50%, -70%, 0);
+    background-color: #fff;
+    z-index: 1;
+    border-radius: 10px;
+    overflow: hidden;
+    .header {
+      height: 100rpx;
+      background: #efeff4;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      .close {
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: 100rpx;
+        height: 100rpx;
+        &:before {
+          content: '\e600';
+          font-family: 'TieJia';
+          color: #353535;
+          display: block;
+          font-size: 24rpx;
+          width: 24rpx;
+          height: 24rpx;
+          position: absolute;
+          right: 30rpx;
+          top: 30rpx;
+        }
+      }
+      text {
+        font-size: 34rpx;
+        font-weight: bold;
+        color: #353535;
+        line-height: 100rpx;
+        height: 100rpx;
+      }
+    }
+    .content {
+      line-height: 36rpx;
+      font-size: 26rpx;
+      color: #353535;
+      display: block;
+      padding: 38px 40rpx 0;
+    }
+    .tel {
+      margin: 48rpx auto 0;
+      position: relative;
+      border: 1rpx solid #979797;
+      border-radius: 4px;
+      width: 514rpx;
+      height: 88rpx;
+      box-sizing: border-box;
+      padding: 0 30px 0 16px;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      &.error {
+        border: 1rpx solid #ff4035;
+      }
+      text {
+        position: absolute;
+        left: 0;
+        top: -40rpx;
+        color: #ff4035;
+        font-size: 24rpx;
+        line-height: 40rpx;
+      }
+      input {
+        outline: none;
+        border: none;
+        font-size: 28rpx;
+        color: #4a4a53;
+        line-height: 24px;
+      }
+      .empty {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: rgba(189, 193, 201, 0.5);
+        &:after,
+        &:before {
+          content: '';
+          position: absolute;
+          width: 8px;
+          height: 1rpx;
+          top: 6px;
+          left: 3px;
+          background-color: #fff;
+          transform-origin: 50% 50%;
+        }
+        &:after {
+          transform: rotate(45deg);
+        }
+        &:before {
+          transform: rotate(-45deg);
+        }
+      }
+    }
+    .verify {
+      margin: 40rpx auto 0;
+      width: 514rpx;
+      height: 88rpx;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      text {
+        position: absolute;
+        left: 0;
+        top: -40rpx;
+        color: #ff4035;
+        font-size: 24rpx;
+        line-height: 40rpx;
+      }
+      input {
+        width: 290rpx;
+        height: 88rpx;
+        box-sizing: border-box;
+        border: 1rpx solid #979797;
+        border-radius: 4rpx;
+        font-size: 36rpx;
+        padding: 0 16rpx;
+      }
+      .btn {
+        width: 208rpx;
+        height: 88rpx;
+        background: #486cdc;
+        border-radius: 4rpx;
+        line-height: 88rpx;
+        text-align: center;
+        font-size: 32rpx;
+        color: #fff;
+      }
+    }
+    button {
+      width: 514rpx;
+      height: 88rpx;
+      background: #486cdc;
+      border-radius: 4px;
+      margin: 36rpx auto 22px;
+      font-size: 16px;
+      color: #ffffff;
+      line-height: 44px;
+      text-align: center;
+      border: none;
+      transition: opacity 0.4s linear;
+      &.disabled {
+        opacity: 0.4;
+      }
+    }
+  }
+}
+</style>

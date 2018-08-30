@@ -1,0 +1,365 @@
+<template>
+  <view class="home">
+    <view class="header" wx:if="{{!headerShow}}">
+      <view class="left selected">
+        <view class="icon">
+          <text class="round"></text>
+          <text class="line"></text>
+        </view>
+        <text>基本信息</text>
+        </view>
+      <view class="right {{infoOrImage ? 'selected':''}}">
+        <view class="icon">
+          <text class="line"></text>
+          <text class="round"></text>
+        </view>
+        <text>图片认证</text>
+      </view>
+    </view>
+
+    <view class="header1" wx:if="{{headerShow}}">
+      <view class="{{infoOrImage ? '' : 'selected'}}" @tap="tapFun(0)">
+        <text>基本信息</text>
+      </view>
+      <view class="{{infoOrImage ? 'selected' : ''}}" @tap="tapFun(1)">
+        <text>图片认证</text>
+      </view>
+    </view>
+
+    <!-- 基本信息 -->
+    <Form
+      hidden="{{infoOrImage}}"
+      :headerShow.sync="headerShow"
+      :submitData.sync="submitData"
+      :detail.sync="detail"
+    ></Form>
+    <!-- 上传图片 -->
+    <chooseImg
+      hidden="{{!infoOrImage}}"
+      :headerShow.sync="headerShow"
+      :submitData.sync="submitData"
+      :detail.sync="detail"
+    ></chooseImg>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixins from '../mixins'
+import formList from '../components/form'
+import chooseImageView from '../components/chooseImage'
+
+export default class index extends wepy.page {
+  config = {
+    navigationBarTitleText: '编辑设备'
+  }
+  components = { Form: formList, chooseImg: chooseImageView }
+
+  mixins = [mixins]
+
+  data = {
+    // tap切换
+    tapShow: true,
+    // 上传图片 or 信息填写
+    infoOrImage: false,
+    // 头部展示 编辑 还是 发布
+    headerShow: false,
+    // 所在地区
+    address: {},
+    // 设备id
+    deviceId: '',
+    // 设备信息
+    detail: {},
+    // 发布信息参数
+    submitData: {
+      modelId: '', // 型号ID
+      modelName: '', // 型号名称
+      brandId: '', // 品牌ID
+      brandName: '', // 品牌名称
+      categoryId: '', // 机型ID
+      categoryName: '', // 机型名称
+      quotaValue: '', // 指标值
+      driverFlag: '0', // 是否带司机 0-否 1-是
+      factoryTime: '', // 出厂时间
+      cityCode: '', // 城市代码
+      availableTime: '', // 可用开始时间，格式：秒数
+      hammerFlag: '0', // 是否带锤 0-否 1-是
+      hours: '', // 小时数
+      serialNo: '', // 序列号
+      cloudboxSn: '', // 云盒SN
+      description: '', // 说明描述
+      imageListStr: [], // 设备图片 {type:1, url:'imgurl.jpg'} json字符串
+      wxOpenid: '' //
+    }
+  }
+  watch = {}
+  methods = {
+    tapFun(n) {
+      if (n == 0) {
+        this.infoOrImage = false
+      } else {
+        this.infoOrImage = true
+      }
+      this.$apply()
+    }
+  }
+
+  events = {
+    chooseImageFun(res) {
+      if (res == '1') {
+        this.infoOrImage = true
+        this.$apply()
+      }
+    },
+    // 编辑 删除 保存数据
+    editDevice(type) {
+      switch (Number(type)) {
+        case 0:
+          // 删除
+          wx.showModal({
+            title: '铁甲提示',
+            content: '确定要删除这个设备信息吗？',
+            success: res => {
+              if (res.confirm) {
+                this.removeDevice(this.deviceId)
+              } else if (res.cancel) {
+                console.log('用户点击取消')
+              }
+            }
+          })
+          break
+        case 1:
+          // 编辑保存
+          this.deviceEdit()
+          break
+      }
+    },
+    // 清空数据
+    removeSubmitData(id) {
+      // 缓存清除
+      wx.removeStorage({
+        key: 'ZUCategoryList'
+      })
+      wx.removeStorage({
+        key: 'ZUcityObj'
+      })
+      // 成功 跳详情页
+      wx.navigateBack({
+        delta: 1
+      })
+      // wepy.navigateTo({
+      //   url: `/pages/device-detail?id=${escape(id)}`
+      // })
+      this.$apply()
+    }
+  }
+  onLoad(option) {
+    wx.removeStorage({
+      key: 'ZUcityObj'
+    })
+    if (option.id) {
+      wepy.setNavigationBarTitle({
+        title: '编辑设备'
+      })
+      this.headerShow = true
+      this.deviceId = unescape(option.id)
+      // 请求数据
+      this.getDeviceDetail()
+    }
+    this.$apply()
+  }
+
+  onShow() {
+    // 获取城市定位信息
+    wx.getStorage({
+      key: 'ZUcityObj',
+      complete: res => {
+        if (!res.data) {
+        } else {
+          let data = JSON.parse(res.data)
+          this.submitData.cityCode = data.code
+          this.$invoke(`./Form`, 'addressChoose', data.name)
+          this.$apply()
+        }
+      },
+      fail: res => {}
+    })
+    // 品牌型号
+    if (this.$parent.globalData.brandInfo[1]) {
+      this.submitData.modelId = this.$parent.globalData.brandInfo[1].id
+      this.submitData.modelName = this.$parent.globalData.brandInfo[1].name
+      this.submitData.brandId = this.$parent.globalData.brandInfo[0].id
+      this.submitData.brandName = this.$parent.globalData.brandInfo[0].name
+      this.submitData.serialId = this.$parent.globalData.brandInfo[2].id
+      this.submitData.serialName = this.$parent.globalData.brandInfo[1].name
+      this.$invoke(
+        `./Form`,
+        'brandChoose',
+        this.$parent.globalData.brandInfo[0].name +
+          ' ' +
+          this.$parent.globalData.brandInfo[1].name
+      )
+    }
+
+    // openID
+    this.submitData.wxOpenid = this.$parent.globalData.wxOpenId
+
+    this.$apply()
+
+    // 统计
+    this.autoTrackPageShow('编辑设备页')
+  }
+
+  // 获取设备详情
+  getDeviceDetail() {
+    wepy
+      .request({
+        url: `${this.host}app/device/getDevice`,
+        data: {
+          id: this.deviceId
+        }
+      })
+      .then(res => {
+        if (res.data.ret == '0') {
+          this.detail = res.data.data
+          this.$apply()
+        }
+      })
+  }
+
+  // 删除设备
+  removeDevice(id) {
+    wx.showLoading({
+      title: '删除中...'
+    })
+    wepy
+      .request({
+        url: `${this.host}app/device/removeDevice`,
+        data: {
+          deviceId: id,
+          wxOpenid: this.$parent.globalData.wxOpenId
+        }
+      })
+      .then(res => {
+        console.log(res)
+
+        wx.hideLoading()
+        if (res.data.ret == '0') {
+          wx.setStorage({
+            key: 'ZUDeviceUpData',
+            data: 1
+          })
+          wx.navigateBack({
+            delta: 2
+          })
+        } else {
+          wepy.showToast({
+            icon: 'none',
+            title: res.data.msg,
+            duration: 1000
+          })
+        }
+      })
+  }
+
+  // 编辑保存
+  // 提交
+  deviceEdit() {
+    this.$invoke(`./chooseImg`, 'submitDevice', this.deviceId)
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.home {
+  background: #f3f3f3;
+  height: 100vh;
+  .header {
+    height: 128rpx;
+    display: flex;
+    padding: 0 40rpx;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    background-color: #fff;
+    margin-bottom: 20rpx;
+    > view {
+      width: 50%;
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+      justify-content: space-around;
+      &.selected {
+        .icon {
+          .line {
+            background-color: #486cdc;
+          }
+        }
+      }
+      &.right {
+        > text {
+          text-align: right;
+        }
+        .icon {
+          padding-right: 44rpx;
+          padding-left: 0;
+        }
+      }
+      > text {
+        width: 100%;
+        display: block;
+        line-height: 32rpx;
+        font-size: 24rpx;
+        color: #6a6a77;
+      }
+      .icon {
+        width: 100%;
+        padding: 16rpx 0 16rpx 44rpx;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        .round {
+          width: 22rpx;
+          height: 22rpx;
+          border-radius: 50% 50%;
+          background: #fff;
+          box-sizing: border-box;
+          border: 6rpx solid #486cdc;
+          position: relative;
+        }
+        .line {
+          display: flex;
+          height: 4rpx;
+          flex-grow: 1;
+          background: #dce2ee;
+        }
+      }
+    }
+  }
+  .header1 {
+    height: 98rpx;
+    display: flex;
+    flex-direction: row;
+    background-color: #fff;
+    margin-bottom: 20rpx;
+    view {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text {
+        font-size: 32rpx;
+        color: #9ea4af;
+        display: block;
+        line-height: 98rpx;
+        box-sizing: border-box;
+      }
+      &.selected text {
+        color: #3b6afb;
+        border-bottom: 6rpx solid #3b6afb;
+      }
+    }
+  }
+}
+</style>

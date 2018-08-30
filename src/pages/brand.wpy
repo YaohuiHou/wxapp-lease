@@ -1,0 +1,281 @@
+<template>
+  <view class="city">
+    <scroll-view scroll-y  scroll-into-view="{{navInfo}}" scroll-with-animation="{{scrollAnimation}}" class="content" enable-back-to-top="true">
+      <block wx:for="{{navArr}}" wx:key="{{index}}">
+        <view  class="li" id="{{item}}" wx:if="{{brandList[item]}}">
+          <text class="em">{{item}}</text>
+          <view class="cities">
+            <text
+              class="span"
+              wx:for="{{brandList[item]}}"
+              @tap="brandChangeFun({{item}})"
+              wx:key="{{index}}"
+            >{{item.name}}</text>            
+          </view>
+        </view>
+      </block>
+    </scroll-view>
+    <!-- 选中的弹窗样式 -->
+    <view class="scale" hidden="{{navInfoShow}}">{{navArr[navIndex]}}</view>
+    <!-- 字母导航 -->
+    <view class="nav" catch:touchmove="indexNavmoveFun" catch:touchend="indexNavEndFun">
+      <view 
+        class="{{[ navArr[index] === navInfo ? 'text selected' : 'text']}}"
+        @tap="indexNav({{index}})" id="{{navArr[index]}}"
+        wx:for="{{navArr}}"
+        wx:key="navArr"
+        data-number="{{index}}"
+      >{{item}}</view>
+    </view>
+    <sidebar
+      :categoryId.sync="categoryId"
+      :sidebarInfo.sync="sidebarInfo"
+      :seriesData.sync="seriesData"
+      :brandItem.sync="brandItem"
+    ></sidebar>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+import sidebar from '../components/series'
+export default class Index extends wepy.page {
+  config = {
+    navigationBarTitleText: '选择品牌'
+  }
+  components = {
+    sidebar
+  }
+  data = {
+    navArr: [],
+    navInfo: '',
+    navIndex: 0,
+    navInfoShow: true,
+    scrollAnimation: false,
+    // 展示
+    sidebarInfo: {
+      show: false
+    },
+    // 机型id
+    categoryId: 0,
+    // 系列
+    seriesData: [],
+    brandList: {},
+    brandItem: null
+  }
+  mixins = [mixin]
+  events = {
+    hide: res => {
+      this.sidebarInfo.show = false
+      this.$apply()
+    }
+  }
+  onLoad(option) {
+    wx.showLoading({
+      title: '玩命加载中...'
+    })
+    if (option.id) {
+      this.categoryId = option.id
+      this.$apply()
+      this.getBrandList()
+    }
+  }
+  onShow() {}
+  methods = {
+    // 选中品牌 打开系列
+    brandChangeFun(item) {
+      // this.$parent.globalData.brandInfo[0] = item
+      this.brandItem = item
+      this.getSerialList(item.id)
+      this.sidebarInfo.show = true
+      this.$apply()
+    },
+    // 导航栏
+    indexNavmoveFun(e) {
+      // 22
+      let num = e.target.dataset.number
+      let top = e.target.offsetTop
+      let index = Math.floor(
+        (e.changedTouches[0].pageY - e.currentTarget.offsetTop) / (top / num)
+      )
+
+      if (index === this.navIndex) {
+        return
+      }
+      this.navIndex = index
+      this.navInfo = this.navArr[index]
+      this.navInfoShow = false
+      this.scrollAnimation = false
+
+      this.$apply()
+    },
+    indexNavEndFun(e) {
+      let time = setTimeout(() => {
+        this.navInfoShow = true
+        this.scrollAnimation = true
+
+        this.$apply()
+        clearTimeout(time)
+      }, 500)
+    },
+    // 导航点击
+    indexNav(index) {
+      this.scrollAnimation = false
+      this.navIndex = index
+      this.navInfo = this.navArr[index]
+      this.navInfoShow = false
+      this.$apply()
+
+      let time = setTimeout(() => {
+        this.navInfoShow = true
+        this.scrollAnimation = false
+        this.$apply()
+        clearTimeout(time)
+      }, 500)
+    }
+  }
+
+  // 获取品牌列表
+  getBrandList() {
+    wepy
+      .request({
+        url: `${this.host}app/product/getBrandList`,
+        data: {
+          categoryId: this.categoryId
+        }
+      })
+      .then(res => {
+        wx.hideLoading()
+        if (res.data.ret == '0') {
+          this.brandList = res.data.data
+          // 序列号
+          for (const key in this.brandList) {
+            if (this.brandList[key].length > 0) {
+              this.navArr.push(key)
+            }
+          }
+          this.navArr = this.navArr.sort()
+          this.$apply()
+        }
+      })
+  }
+
+  // 系列列表
+  getSerialList(id) {
+    wepy
+      .request({
+        url: `${this.host}app/product/getSerialList`,
+        data: {
+          brandId: id,
+          categoryId: this.categoryId
+        }
+      })
+      .then(res => {
+        wx.hideLoading()
+        if (res.data.ret == '0') {
+          this.seriesData = res.data.data
+          this.$apply()
+        }
+      })
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.city {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 100;
+  background-color: #fff;
+}
+.nav {
+  position: fixed;
+  right: 0;
+  bottom: 80rpx;
+}
+.nav .text {
+  display: block;
+  height: 44rpx;
+  line-height: 36rpx;
+  text-align: center;
+  padding: 0 10px;
+  font-size: 22rpx;
+  color: #353535;
+}
+.nav .text.selected {
+  color: #1571e5;
+}
+.scale {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 160rpx;
+  height: 160rpx;
+  line-height: 160rpx;
+  margin: -80rpx 0 0 -80rpx;
+  text-align: center;
+  font-size: 100rpx;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 12;
+  -webkit-transition: opacity 0.2s ease-out;
+  transition: opacity 0.2s ease-out;
+  border-radius: 32rpx;
+}
+.content {
+  list-style: none;
+  position: relative;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  height: 100vh;
+}
+.content .li {
+  background: #fff;
+}
+.content .li .em,
+.content .li .span {
+  text-align: left;
+  color: #353535;
+}
+.content .li .em {
+  background: #efeff4;
+  line-height: 68rpx;
+  display: block;
+  font-size: 30rpx;
+  padding: 0 20rpx;
+}
+.cities {
+  background: #fff;
+}
+.content .li .span {
+  display: block;
+  padding: 0 20rpx;
+  line-height: 70rpx;
+  font-size: 28rpx;
+  border-bottom: 1rpx solid #efeff4;
+}
+.content .li .location {
+  height: 100rpx;
+  line-height: 100rpx;
+  text-align: left;
+  font-size: 34rpx;
+  color: #486cdc;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 0;
+  &:before {
+    content: '\e7c4';
+    font-family: 'TieJia';
+    display: block;
+    width: 20rpx;
+    height: 30rpx;
+    font-size: 30rpx;
+    line-height: 30rpx;
+    color: #486cdc;
+    margin-right: 15rpx;
+  }
+}
+</style>

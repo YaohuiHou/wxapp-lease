@@ -1,0 +1,268 @@
+<template>
+  <view class="li" @tap="goToLink({{item}})">
+    <view class="head">
+      <view class="left">
+        <view class="top">
+          <text class="h2">{{item.deviceNum}}台{{item.quotaName}}{{item.categoryName}}</text>
+          <text class="status status{{item.statusKey}}" wx:if="{{item.statusDesc && item.overtime != 1}}">{{item.statusDesc}}</text>
+          <text class="status status4" wx:if="{{item.overtime == 1}}">已超时</text>
+        </view>
+        <view class="bottom">
+          <view class="text" wx:if="{{item.driverFlag == 1}}">
+            <text>需司机</text>
+          </view>
+          <view class="text" wx:if="{{item.tool}}">
+            <text>要求带锤</text>
+          </view>
+          <view class="text" wx:if="{{item.authFlag == 1}}">
+            <text>要求认证</text>
+          </view>
+        </view>
+      </view>
+      <block wx:if="{{!showBtn && item.statusKey <= 4}}">
+        <view class="right" wx:if="{{btns[item.statusKey].show && item.overtime != 1}}">
+          <text class="btn {{btns[item.statusKey].class}}">{{btns[item.statusKey].name}}</text>
+          <text>已有{{item.orderTotal ? item.orderTotal : 0}}人报价</text>
+        </view>
+      </block>
+    </view>
+    <view class="info">
+      <text>进场时间：{{wxs.formatTime(item.rentTime)}}</text>
+      <text>预计工作量：{{item.quantity}}{{item.priceTypeName}}</text>
+      <text wx:if="{{item.description}}">需求说明：{{item.description}}</text>
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixins from '../mixins'
+import uitil from '../uitil.wxs'
+
+export default class index extends wepy.component {
+  props = {
+    item: {
+      twoWay: true
+    },
+    showBtn: {
+      twoWay: true
+    },
+    projectId: {
+      twoWay: true
+    }
+  }
+
+  wxs = {
+    wxs: uitil
+  }
+
+  mixins = [mixins]
+
+  data = {
+    statusText: ['', '抢单中...', '待进场', '已完成', '已取消'],
+    btns: {
+      1: {
+        name: '马上抢单',
+        show: true,
+        class: 'status1'
+      },
+      2: {
+        name: '查看订单',
+        show: true,
+        class: 'status2'
+      },
+      3: {
+        name: '查看订单',
+        show: true,
+        class: 'status2'
+      },
+      4: {
+        name: '已结束',
+        show: false,
+        class: 'status2'
+      },
+      5: {
+        name: '已结束',
+        show: false,
+        class: 'status2'
+      },
+      6: {
+        name: '已结束',
+        show: false,
+        class: 'status2'
+      }
+    }
+  }
+  watch = {}
+  methods = {
+    // 跳转
+    goToLink(item) {
+      if (item.statusKey == 1) {
+        if (
+          item.overtime == 1 &&
+          (item.statusKey == 1 || item.statusKey == 5)
+        ) {
+          return
+        }
+        this.setSensorsData({
+          Category: '点击马上抢单按钮',
+          Action: '工程详情页',
+          Label: ''
+        })
+        // 抢单
+        wepy.navigateTo({
+          url: `/pages/rob-job?id=${escape(item.id)}&projectId=${escape(
+            this.projectId
+          )}`
+        })
+      } else if (item.statusKey >= 4 && item.statusKey <= 5) {
+      } else {
+        // 去查看订单
+        wepy.navigateTo({
+          url: `/pages/my-order`
+        })
+      }
+    }
+  }
+
+  events = {}
+  onLoad() {
+    wepy
+      .request({
+        url: `${this.host}app/meta/getMetaList`
+      })
+      .then(res => {
+        if (res.data.ret === '0') {
+          let metaArr = []
+          Object.values(res.data.data)[0].forEach((ele, index) => {
+            metaArr[index] = {}
+            metaArr[index].name = ele.v
+            metaArr[index].id = ele.k
+          })
+
+          this.list[0].arr = metaArr
+          this.$apply()
+          wx.setStorage({
+            key: 'ZUProjectType',
+            data: JSON.stringify(metaArr)
+          })
+        }
+      })
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.li {
+  padding: 30rpx 40rpx;
+  .head {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    height: 108rpx;
+    padding-bottom: 30rpx;
+    .left {
+      height: 108rpx;
+      display: flex;
+      flex-direction: column;
+      .top {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding-bottom: 20rpx;
+        .h2 {
+          font-size: 40rpx;
+          color: #2d2d33;
+          line-height: 56rpx;
+          margin-right: 18rpx;
+          font-weight: bold;
+        }
+        .status {
+          padding: 0 6rpx;
+          border-radius: 4rpx;
+          font-size: 20rpx;
+          color: #ffffff;
+          line-height: 36rpx;
+          height: 36rpx;
+          &.status0 {
+            background-color: #7ed321;
+          }
+          &.status1 {
+            background-color: #ffae00;
+          }
+          &.status2 {
+            background-color: #ff5b3e;
+          }
+          &.status3,
+          &.status4,
+          &.status5 {
+            background-color: rgba(158, 164, 175, 0.6);
+          }
+        }
+      }
+      .bottom {
+        display: flex;
+        flex-direction: row;
+        .text {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 12rpx;
+          height: 40rpx;
+          border-radius: 4rpx;
+          margin-right: 16rpx;
+          box-sizing: border-box;
+          border: 1rpx solid #fb7530;
+          text {
+            font-size: 20rpx;
+            color: #fb7530;
+            line-height: 24rpx;
+          }
+        }
+      }
+    }
+    .right-text {
+      font-size: 30rpx;
+      color: rgba(158, 164, 175, 0.6);
+    }
+    .right {
+      height: 108rpx;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      .btn {
+        width: 124rpx;
+        height: 52rpx;
+        border-radius: 52rpx;
+        line-height: 52rpx;
+        text-align: center;
+        font-size: 24rpx;
+        &.status1 {
+          color: #3b6afb;
+          border: 1rpx solid #3b6afb;
+        }
+        &.status2 {
+          background: #ff5b3e;
+          color: #fff;
+        }
+      }
+      text {
+        font-size: 24rpx;
+        color: #9ea4af;
+        line-height: 34rpx;
+        margin-top: 10rpx;
+      }
+    }
+  }
+  .info {
+    display: flex;
+    flex-direction: column;
+    text {
+      font-size: 28rpx;
+      color: #6a6a77;
+      line-height: 40rpx;
+    }
+  }
+}
+</style>

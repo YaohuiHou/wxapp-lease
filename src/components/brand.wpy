@@ -1,0 +1,493 @@
+<template>
+  <view class="view" hidden="{{!brandShow}}">
+    <view class="brand">
+      <view class="head">选择品牌</view>
+      <scroll-view scroll-y class="scroll-view" scroll-into-view="{{navInfo}}" scroll-with-animation="{{scrollAnimation}}" >
+        <view>
+          <text class="h4" id="top">热门品牌</text>
+          <view class="hot-content">
+            <view class="brand-li" wx:for="{{hotBrand}}" wx:key="{{index}}" @tap="selectHotFun({{item}})">
+              <image src="{{item.img}}"></image>
+              <text>{{item.name}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="brand-list">
+          <block wx:for="{{brandList}}" wx:key="{{index}}">
+            <text class="h4" id="{{index}}">{{index}}</text>
+            <view class="content">
+              <text
+                wx:for="{{item}}"
+                wx:key="{{index}}"
+                class="{{item.selected ? 'selected' : ''}}"
+                data-id="{{item.id}}"
+                @tap="selectFun({{item}})"
+              >{{item.name}}</text>
+            </view>
+          </block>
+        </view>
+      </scroll-view>
+
+      <!-- 选中的弹窗样式 -->
+      <view class="scale" hidden="{{navInfoShow}}">{{navInfo == 'top' ? '热' : navInfo}}</view>
+      <!-- 字母导航 -->
+      <view class="nav" catch:touchmove="indexNavmoveFun" catch:touchend="indexNavEnd" >
+        <view 
+          class="{{[ navArr[index] === navInfo ? 'text selected' : 'text']}}"
+          @tap="indexNav({{index}})" id="{{navArr[index]}}"
+          wx:for="{{navArr}}"
+          wx:key="navArr"
+          data-number="{{index}}"
+        >{{item}}</view>
+      </view>
+      
+    </view>
+    <view class="mask" @tap="toastMask"></view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixin from '../mixins'
+export default class brandId extends wepy.component {
+  props = {
+    brandShow: {
+      type: Boolean,
+      default: false,
+      twoWay: true
+    },
+    submitData: {
+      type: Object,
+      twoWay: true
+    },
+    brandData: {
+      twoWay: true
+    }
+  }
+  data = {
+    navArr: [],
+    // 选中字母
+    navInfo: '',
+    navIndex: 0,
+    // 选中弹窗
+    navInfoShow: true,
+    scrollAnimation: false,
+    // 之前选中的信息
+    startSelectItem: null,
+    hotBrand: [
+      {
+        name: '小松',
+        id: '93',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3001.png'
+      },
+      {
+        name: '斗山',
+        id: '23',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3003.png'
+      },
+      {
+        name: '卡特彼勒',
+        id: '48',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3002.png'
+      },
+      {
+        name: '日立',
+        id: '68',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3004.png'
+      },
+      {
+        name: '神钢',
+        id: '78',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3005.png'
+      },
+      {
+        name: '现代',
+        id: '71',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3006.png'
+      },
+      {
+        name: '三一重工',
+        id: '69',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3007.png'
+      },
+      {
+        name: '徐工',
+        id: '94',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3014.png'
+      },
+      {
+        name: '柳工',
+        id: '56',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3009.png'
+      },
+      {
+        name: '沃尔沃',
+        id: '88',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3008.png'
+      },
+      {
+        name: '龙工',
+        id: '57',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3010.png'
+      },
+      {
+        name: '临工',
+        id: '55',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3011.png'
+      },
+      {
+        name: '常林股份',
+        id: '11',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3019.png'
+      },
+      {
+        name: '成工',
+        id: '16',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3013.png'
+      },
+      {
+        name: '雷沃重工',
+        id: '26',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3016.png'
+      },
+      {
+        name: '加藤',
+        id: '39',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3049.png'
+      },
+      {
+        name: '久保田',
+        id: '46',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3050.png'
+      },
+      {
+        name: '山工',
+        id: '72',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3015.png'
+      },
+      {
+        name: '厦工',
+        id: '90',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3012.png'
+      },
+      {
+        name: '住友',
+        id: '108',
+        img: 'https://upimg.tiebaobei.com/static/app/pinpai/brand3048.png'
+      }
+    ],
+    content: {},
+    brandList: {},
+    // 变化值
+    testPageNum: 0
+  }
+
+  watch = {
+    brandShow() {
+      if (this.testPageNum > 0) return
+      this.testPageNum++
+      wx.getStorageInfo({
+        success: res => {
+          let storage = res.keys
+          if (storage.indexOf('brandsArr') != -1) {
+            wx.getStorage({
+              key: 'brandsArr',
+              success: res => {
+                this.brandList = JSON.parse(res.data)
+                this.navArr = Object.keys(this.brandList).sort()
+                this.navArr.unshift('热')
+                this.$apply()
+                console.log(this.brandList)
+              }
+            })
+          } else {
+            this.brandListFun()
+          }
+        }
+      })
+    }
+  }
+  mixins = [mixin]
+
+  onLoad() {}
+  methods = {
+    // 导航栏
+    indexNavmoveFun(e) {
+      let num = e.target.dataset.number
+      let top = e.target.offsetTop
+      let index = Math.floor(
+        (e.changedTouches[0].pageY - e.currentTarget.offsetTop) / (top / num)
+      )
+
+      if (index !== this.navIndex) {
+        this.navIndex = index
+        this.navInfo = this.navArr[index]
+        this.navInfoShow = false
+        this.scrollAnimation = false
+        this.$apply()
+      }
+    },
+    indexNavEnd(e) {
+      let time = setTimeout(() => {
+        this.navInfoShow = true
+        this.scrollAnimation = true
+        clearTimeout(time)
+        this.$apply()
+      }, 500)
+    },
+    // 导航点击
+    indexNav(index) {
+      this.scrollAnimation = true
+      this.navIndex = index
+      if (index === 0) {
+        this.navInfo = 'top'
+      } else {
+        this.navInfo = this.navArr[index]
+      }
+      this.navInfoShow = false
+      this.$apply()
+
+      let time = setTimeout(() => {
+        this.navInfoShow = true
+        this.$apply()
+        clearTimeout(time)
+      }, 500)
+    },
+    // 关闭
+    toastMask() {
+      this.brandShow = false
+      this.$apply()
+    },
+    // 热门品牌选中
+    selectHotFun(item) {
+      wx.showLoading({
+        title: '数据加载中...'
+      })
+      this.brandShow = false
+      this.submitData.brandId = item.id
+      this.brandData = item
+      // 判断之前数据
+      if (this.startSelectItem) {
+        this.brandList[this.startSelectItem.initial].forEach(ele => {
+          if (ele.id === this.startSelectItem.id) {
+            ele.selected = false
+          }
+        })
+      }
+      // 将选中数据存储
+      this.startSelectItem = null
+
+      this.$apply()
+      this.$emit('getList', 2)
+    },
+
+    // 选中品牌
+    async selectFun(item) {
+      wx.showLoading({
+        title: '数据加载中...'
+      })
+      this.brandShow = false
+      this.submitData.brandId = item.id
+      this.brandData = item
+
+      let EnStart = item.initial
+      await this.brandList[EnStart].forEach(ele => {
+        if (ele.id === item.id) {
+          ele.selected = true
+        }
+      })
+
+      // 判断之前数据
+      if (this.startSelectItem) {
+        await this.brandList[this.startSelectItem.initial].forEach(ele => {
+          if (ele.id === this.startSelectItem.id) {
+            ele.selected = false
+          }
+        })
+      }
+      // 将选中数据存储
+      this.startSelectItem = item
+      // 请求接口
+      this.$apply()
+      this.$emit('getList', 2)
+    }
+  }
+
+  // 获取全部品牌数据
+  brandListFun() {
+    this.$nextTick(() => {
+      wepy
+        .request({
+          url: `${this.host}wx/getBrandList`,
+          data: {
+            callback: 1,
+            categoryId: this.submitData.categoryId
+          }
+        })
+        .then(res => {
+          let data = JSON.parse(res.data.substring(2, res.data.length - 1))
+          if (data.ret == 0) {
+            console.log(data.result)
+
+            this.brandList = data.result
+            this.navArr = Object.keys(this.brandList).sort()
+            this.navArr.unshift('热')
+            // 存储品牌
+            wx.setStorage({
+              key: 'brandsArr',
+              data: JSON.stringify(this.brandList)
+            })
+
+            this.$apply()
+          }
+        })
+    })
+  }
+
+  // 筛选
+  changeItemSelectFun() {
+    if (this.startSelectItem) {
+      this.brandList[this.startSelectItem.initial].forEach(ele => {
+        if (ele.id === this.startSelectItem.id) {
+          ele.selected = false
+        }
+      })
+    }
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.view {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  .mask {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+  .brand {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 590rpx;
+    height: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    z-index: 1;
+    .head {
+      font-size: 34rpx;
+      color: #353535;
+      height: 86rpx;
+      line-height: 86rpx;
+      text-align: center;
+      font-weight: 500;
+    }
+    .scroll-view {
+      height: calc(~'100vh - 86rpx');
+      .h4 {
+        font-size: 30rpx;
+        color: #353535;
+        background: #efeff4;
+        height: 68rpx;
+        line-height: 68rpx;
+        padding-left: 30rpx;
+        display: block;
+      }
+      .hot-content {
+        padding: 20rpx 0 12rpx;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        align-content: flex-start;
+        .brand-li {
+          width: 33%;
+          padding: 20rpx 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          image {
+            width: 100%;
+            height: 20px;
+            margin-bottom: 10rpx;
+          }
+          text {
+            font-size: 28rpx;
+            color: #4a4a53;
+            line-height: 40rpx;
+          }
+        }
+      }
+      .brand-list {
+      }
+      .content {
+        background-color: #fff;
+        padding-left: 60rpx;
+        text {
+          display: block;
+          font-size: 28rpx;
+          color: #353535;
+          height: 100rpx;
+          line-height: 100rpx;
+          border-bottom: 1rpx solid #e5e5e5;
+          &.selected {
+            color: #486cdc;
+            font-weight: 600;
+          }
+          &:last-child {
+            border: none;
+          }
+        }
+      }
+    }
+  }
+}
+.nav {
+  position: fixed;
+  right: 0;
+  bottom: 120rpx;
+}
+.nav .text {
+  display: block;
+  height: 44rpx;
+  line-height: 36rpx;
+  text-align: center;
+  padding: 0 10px;
+  font-size: 22rpx;
+  color: #353535;
+}
+.nav .text.selected {
+  color: #1571e5;
+}
+.scale {
+  position: fixed;
+  top: 50%;
+  left: 295rpx;
+  width: 160rpx;
+  height: 160rpx;
+  line-height: 160rpx;
+  margin: -80rpx 0 0 80rpx;
+  text-align: center;
+  font-size: 100rpx;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 12;
+  -webkit-transition: opacity 0.2s ease-out;
+  transition: opacity 0.2s ease-out;
+  border-radius: 32rpx;
+}
+</style>

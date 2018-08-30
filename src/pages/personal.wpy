@@ -1,0 +1,472 @@
+<template>
+  <view class="home">
+    <!-- 头 -->
+    <view class="header">
+      <view class="figure">
+        <image mode="scaleToFill" src="{{userData.wxPortrait}}"></image>
+      </view>
+      <view class="info">
+        <text class="h1" wx:if="{{!userData.realName}}">{{userData.wxName}}</text>
+        <text class="h1" wx:if="{{userData.realName}}">{{userData.realName}}</text>
+        <text class="text">{{userData.company}}</text>
+      </view>
+    </view>
+
+    <!-- 订单 设备 -->
+    <view class="order-device">
+      <view class="order">
+        <navigator url="/pages/my-order"  class="all-order">
+          <view class="figure">
+            <image mode="aspectFill" src="../images/order.png"></image>
+          </view>
+          <text>我的订单</text>
+        </navigator>
+        <view class="other">
+          <navigator wx:for="{{order}}" wx:key="{{index}}" url="/pages/my-order?type={{item.index}}" class="show">
+            <view class="figure figure{{index}}">
+              <image mode="aspectFill" src="{{item.img}}"></image>
+            </view>
+            <text>{{item.name}}</text>
+          </navigator>
+        </view>
+      </view>
+      <navigator url="/pages/my-devices"  class="device">
+        <view class="all-device">
+          <view class="figure">
+            <image mode="aspectFill" src="../images/device.png"></image>
+          </view>
+          <text>我的设备</text>
+        </view>
+        <view class="other">
+          <view class="show">
+            <text class="num">{{deviceInfo.totalDeviceCount ? deviceInfo.totalDeviceCount : 0}}</text>
+            <text>总设备</text>
+          </view>
+           <view class="show">
+            <text class="num">{{deviceInfo.idleDeviceCount ? deviceInfo.idleDeviceCount : 0}}</text>
+            <text>空闲中</text>
+          </view>
+           <view class="show">
+            <text class="num">{{deviceInfo.busyDeviceCount ? deviceInfo.busyDeviceCount : 0}}</text>
+            <text>已接单</text>
+          </view>
+        </view>
+      </navigator>
+    </view>
+
+    <!-- 信息 -->
+    <view class="ul">
+      <view class="li" @tap="goToTel">
+        <text>申请铁甲认证</text>
+      </view>
+      <view class="li" @tap="goChangeInfo(0)">
+        <text>真实姓名</text>
+      </view>
+      <view class="li" @tap="goChangeInfo(1)">
+        <text>企业信息</text>
+      </view>
+    </view>
+
+    <!-- 登录 -->
+    <view class="gotoLogin" wx:if="{{loginShow}}">
+      <button open-type="getUserInfo" class="login" wx:if="{{getPhone}}" bindgetuserinfo="onGotUserInfo"></button>
+      <button open-type="getPhoneNumber" bindgetphonenumber="getPhoneNumber" class="getPhone" wx:if="{{!getPhone}}" ></button>
+    </view>
+    
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import mixins from '../mixins'
+
+export default class index extends wepy.page {
+  config = {
+    navigationBarTitleText: '我的'
+  }
+  components = {}
+
+  mixins = [mixins]
+
+  data = {
+    // 是否登录
+    loginShow: true,
+    getPhone: true,
+    // 个人中心
+    userData: {
+      company: '登录发现更多',
+      realName: '',
+      wxName: '点击注册/登录',
+      mobile: '',
+      wxPortrait: '../images/header.jpg'
+    },
+    // 提交信息
+    userInfo: {
+      encryptedData: '',
+      iv: '',
+      sessionKey: '',
+      cityCode: '',
+      company: '',
+      mobile: '',
+      realName: '',
+      wxName: '',
+      wxPortrait: '',
+      wxOpenid: ''
+    },
+    deviceInfo: null,
+    order: [
+      {
+        name: '待确认',
+        img: '../images/wait.png',
+        index: 1
+      },
+      {
+        name: '待进场',
+        img: '../images/ok.png',
+        index: 3
+      },
+      {
+        name: '已完成',
+        img: '../images/over.png',
+        index: 4
+      }
+    ]
+  }
+  watch = {}
+  methods = {
+    // 完善资料
+    goChangeInfo(n) {
+      wepy.navigateTo({
+        url: `/pages/complete?id=${n}`
+      })
+    },
+    // 拨打电话
+    goToTel() {
+      wepy.makePhoneCall({
+        phoneNumber: this.phoneTieJia // 仅为示例，并非真实的电话号码
+      })
+    },
+    // 获取用户数据
+    onGotUserInfo: e => {
+      // 保存个人信息
+      this.userInfo.wxName = e.detail.userInfo.nickName
+      this.userInfo.wxPortrait = e.detail.userInfo.avatarUrl
+      wx.setStorage({
+        key: 'userInfoObj',
+        data: JSON.stringify(this.userInfo),
+        success: res => {
+          this.getPhone = false
+          this.$apply()
+          // 调起登录
+          // wepy.navigateTo({
+          //   url: `/pages/register`
+          // })
+        }
+      })
+    },
+    // 获取手机号
+    getPhoneNumber(e) {
+      if (e.detail.encryptedData) {
+        this.userInfo.encryptedData = e.detail.encryptedData
+        this.userInfo.iv = e.detail.iv
+        this.userInfo.sessionKey = this.$parent.globalData.sessionKey
+        this.userInfo.wxOpenid = this.$parent.globalData.wxOpenId
+        this.$apply()
+        // 提交
+        this.submitMyInfo()
+      } else {
+        // 调起登录
+        wepy.navigateTo({
+          url: `/pages/register`
+        })
+      }
+    }
+  }
+
+  onShow() {
+    // 判断用户登录
+    this.gotoLoginupFun()
+    this.$apply()
+    // 统计
+    this.setSensorsData({
+      Category: '点击底部菜单',
+      Action: '点击我的按钮',
+      Label: ''
+    })
+  }
+  // 提交个人信息
+  submitMyInfo() {
+    // 提交
+    wepy
+      .request({
+        url: `${this.host}app/device/saveUser`,
+        data: this.userInfo,
+        method: 'POST',
+        header: {
+          'content-Type': 'application/x-www-form-urlencoded',
+          client: 'm'
+        }
+      })
+      .then(res => {
+        if (res.data.ret === '0') {
+          this.$parent.globalData.ISLogin = true
+          this.gotoLoginupFun()
+          this.$apply()
+        }
+      })
+  }
+
+  // 判断登录
+  gotoLoginupFun() {
+    // 判断用户登录
+    if (this.$parent.globalData.ISLogin) {
+      this.loginShow = false
+      // 请求用户数据
+      wx.getStorage({
+        key: 'userInfoObj',
+        complete: res => {
+          if (res.data) {
+            this.userInfo = JSON.parse(res.data)
+            this.userData = JSON.parse(res.data)
+            this.$apply()
+          } else {
+            this.getUserInfo()
+          }
+        }
+      })
+      this.getPersonalCenter()
+    } else {
+      this.loginShow = true
+    }
+  }
+
+  // 个人中心信息
+  getPersonalCenter() {
+    wepy
+      .request({
+        url: `${this.host}app/device/getPersonalCenter`,
+        data: {
+          wxOpenid: this.$parent.globalData.wxOpenId
+        }
+      })
+      .then(res => {
+        let data = res.data
+        if (data.ret === '0') {
+          this.deviceInfo = data.data
+          this.$apply()
+        }
+      })
+  }
+
+  // 请求用户个人数据
+  getUserInfo() {
+    wepy
+      .request({
+        url: `${this.host}app/device/getUser`,
+        data: {
+          wxOpenid: this.$parent.globalData.wxOpenId
+        }
+      })
+      .then(res => {
+        let data = res.data
+        if (data.ret === '0') {
+          this.userData = data.data
+          this.$apply()
+
+          // 缓存个人信息
+          wx.setStorage({
+            key: 'userInfoObj',
+            data: JSON.stringify(data.data)
+          })
+        }
+      })
+  }
+}
+</script>
+
+<style lang="less" scoped>
+.gotoLogin,
+.login,
+.getPhone {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  border: none;
+  outline: none;
+  opacity: 0;
+}
+.login {
+  z-index: 10;
+  background-color: green;
+}
+.getPhone {
+  z-index: 9;
+  background-color: red;
+  opacity: 0.7;
+}
+.home {
+  background: #f3f3f3;
+  height: 100vh;
+  .header {
+    position: relative;
+    height: 240rpx;
+    display: flex;
+    padding: 0 40rpx;
+    flex-direction: row;
+    align-items: center;
+    background-color: #fff;
+    margin-bottom: 20rpx;
+    .figure {
+      width: 112rpx;
+      height: 112rpx;
+      border-radius: 50%;
+      overflow: hidden;
+      margin-right: 50rpx;
+      image {
+        width: 100%;
+        height: 100%;
+      }
+    }
+    .info {
+      display: flex;
+      justify-content: space-between;
+      flex-direction: column;
+      .h1 {
+        line-height: 60rpx;
+        font-size: 44rpx;
+        font-weight: bold;
+        color: #2d2d33;
+        margin-bottom: 6rpx;
+      }
+      .text {
+        font-size: 24rpx;
+        color: #6a6a77;
+        line-height: 32rpx;
+      }
+    }
+  }
+  .order-device {
+    padding: 40rpx 0;
+    background-color: #fff;
+    margin-bottom: 20rpx;
+    .order,
+    .device {
+      display: flex;
+      flex-direction: row;
+      padding: 40rpx 0;
+      .figure {
+        width: 42rpx;
+        height: 42rpx;
+        margin: 0 auto;
+        image {
+          width: 100%;
+          height: 100%;
+        }
+      }
+      .figure0,
+      .figure2 {
+        width: 40rpx;
+        height: 40rpx;
+      }
+      .all-order,
+      .all-device {
+        position: relative;
+        padding: 0 60rpx 0 44rpx;
+        display: flex;
+        flex-direction: column;
+        height: 86rpx;
+        justify-content: space-between;
+        &:after {
+          content: '';
+          position: absolute;
+          right: 0;
+          top: 50%;
+          width: 1px;
+          height: 50rpx;
+          background-color: #dce2ee;
+          transform: translateY(-50%) scaleX(0.5);
+        }
+        text {
+          font-size: 24rpx;
+          line-height: 32rpx;
+          color: #6a6a77;
+        }
+        .figure {
+          width: 34rpx;
+          height: 40rpx;
+          margin: 0 auto;
+          image {
+            width: 100%;
+            height: 100%;
+          }
+        }
+      }
+      .all-device {
+        .figure {
+          width: 52rpx;
+          height: 32rpx;
+        }
+      }
+      .other {
+        padding: 0 6rpx 0 10rpx;
+        display: flex;
+        flex-grow: 1;
+        flex-direction: row;
+        justify-content: center;
+        .show {
+          flex: 1;
+          display: flex;
+          height: 86rpx;
+          justify-content: space-between;
+          flex-direction: column;
+          text-align: center;
+          text {
+            font-size: 24rpx;
+            line-height: 32rpx;
+            color: #6a6a77;
+          }
+          .num {
+            font-size: 34rpx;
+            font-weight: bold;
+          }
+        }
+      }
+    }
+  }
+  .ul {
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    .li {
+      padding: 0 40rpx;
+      height: 120rpx;
+      display: flex;
+      align-items: center;
+      border-bottom: 1rpx solid rgba(220, 226, 238, 0.6);
+      &:last-child {
+        border: none;
+      }
+      text {
+        font-size: 28rpx;
+        color: #6a6a77;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        flex-direction: row;
+        align-items: center;
+        &:after {
+          content: '\5DE6';
+          font-family: 'TieJia';
+          color: #bdc1c9;
+          font-size: 28rpx;
+          line-height: 40rpx;
+          display: block;
+        }
+      }
+    }
+  }
+}
+</style>
